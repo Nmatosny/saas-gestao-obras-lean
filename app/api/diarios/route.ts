@@ -117,14 +117,20 @@ export async function POST(request: Request) {
 
           const qtyToday = Number(act.quantidadeRealizada) || 0;
           const totalQty = currentAtiv.quantidadeTotal || 100;
-          
-          // Se informou quantidade, calcula o progresso acumulado
-          // Caso contrário, usa o progresso informado (fallback legado)
-          let newProgress = Number(act.progress);
+
+          // Calcula progresso acumulado pela quantidade realizada hoje
+          // Fallback: usa progresso direto informado pelo campo legado
+          let calculatedProgress: number;
           if (qtyToday > 0) {
-            const currentProgressQty = (currentAtiv.progress / 100) * totalQty;
-            newProgress = Math.min(100, ((currentProgressQty + qtyToday) / totalQty) * 100);
+            const currentQty = (currentAtiv.progress / 100) * totalQty;
+            calculatedProgress = Math.min(100, ((currentQty + qtyToday) / totalQty) * 100);
+          } else {
+            calculatedProgress = Number(act.progress) || 0;
           }
+
+          // Regra anti-regressão: progresso da atividade só avança, nunca recua.
+          // Impede que um RDO com dado parcial distorça o histórico e os KPIs.
+          const newProgress = Math.max(calculatedProgress, currentAtiv.progress);
 
           const diarioAtividade = await tx.diarioAtividade.create({
             data: {
@@ -138,13 +144,16 @@ export async function POST(request: Request) {
             }
           });
 
-          await tx.atividade.update({
-            where: { id: act.atividadeId },
-            data: { 
-              progress: newProgress,
-              status: newProgress >= 100 ? 'concluido' : 'em_andamento'
-            }
-          });
+          // Só escreve na atividade mestre se houve avanço real ou mudança de status
+          if (newProgress > currentAtiv.progress || act.status) {
+            await tx.atividade.update({
+              where: { id: act.atividadeId },
+              data: {
+                progress: newProgress,
+                status: newProgress >= 100 ? 'concluido' : 'em_andamento',
+              }
+            });
+          }
 
           if (act.efetivoIndices && Array.isArray(act.efetivoIndices)) {
             for (const index of act.efetivoIndices) {

@@ -42,7 +42,7 @@ export async function GET(
         orderBy: { createdAt: 'desc' }
       }),
       prisma.dependency.findMany({
-        where: { obraId }
+        where: { predecessor: { obraId } }
       })
     ]);
 

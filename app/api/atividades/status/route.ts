@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getWorkspaceSession, validateAtividadeOwnership, unauthorizedResponse } from '@/lib/auth';
+
+const VALID_STATUSES = ['programado', 'em_andamento', 'concluido', 'impedido'];
 
 export async function PATCH(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const body = await request.json();
     const { id, status } = body;
 
@@ -10,15 +16,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ID e Status são obrigatórios' }, { status: 400 });
     }
 
-    const data: any = { status };
-    if (status === 'concluido') {
-      data.progress = 100;
+    if (!VALID_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: `Status inválido. Use: ${VALID_STATUSES.join(', ')}` },
+        { status: 400 }
+      );
     }
 
-    await prisma.atividade.update({
-      where: { id },
-      data
-    });
+    // TENANT GUARD — estava ausente, risco de cross-tenant write
+    const isOwner = await validateAtividadeOwnership(id, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
+
+    const data: any = { status };
+    if (status === 'concluido') data.progress = 100;
+
+    await prisma.atividade.update({ where: { id }, data });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
