@@ -1,0 +1,200 @@
+// Este é o seu arquivo de esquema do Prisma.
+// Saiba mais sobre ele na documentação: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  users     User[]
+  obras     Obra[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  name        String?
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+}
+
+model Obra {
+  id          String      @id @default(cuid())
+  nome        String
+  descricao   String?
+  endereco    String?
+  engenheiro  String?
+  arquiteto   String?
+  status      String      @default("Em Andamento")
+  progress    Float       @default(0)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  atividades  Atividade[]
+  diarios     Diario[]
+  locais      Location[]
+  servicos    Service[]
+  versoes     CronogramaVersao[]
+  createdAt   DateTime    @default(now())
+}
+
+model CronogramaVersao {
+  id        String      @id @default(cuid())
+  nome      String
+  ativa     Boolean     @default(false)
+  obra      Obra        @relation(fields: [obraId], references: [id])
+  obraId    String
+  atividades Atividade[]
+  createdAt DateTime    @default(now())
+}
+
+model Location {
+  id         String      @id @default(cuid())
+  name       String
+  order      Int         @default(0)
+  obra       Obra        @relation(fields: [obraId], references: [id])
+  obraId     String
+  atividades Atividade[]
+}
+
+model Service {
+  id                   String               @id @default(cuid())
+  name                 String
+  color                String               @default("#94a3b8")
+  custoEstimado        Float                @default(0)
+  obra                 Obra                 @relation(fields: [obraId], references: [id])
+  obraId               String
+  atividades           Atividade[]
+  depsPredecessor      DependenciaServico[] @relation("Predecessor")
+  depsSucessor         DependenciaServico[] @relation("Sucessor")
+}
+
+model Atividade {
+  id              String      @id @default(cuid())
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  cost            Float       @default(0)
+  weight          Float       @default(1)
+  progress        Float       @default(0)
+  plannedProgress Float       @default(0)
+  status          String      @default("programado") // programado, em_andamento, concluido
+  scheduled       Boolean     @default(false)
+  isCritical      Boolean     @default(false)
+  causaNaoCumprimento String?
+  impactoDescricao String?
+  baselineInicio  DateTime?
+  baselineFim     DateTime?
+  custoOrcado     Float       @default(0)
+  
+  obra            Obra        @relation(fields: [obraId], references: [id])
+  obraId          String
+  location        Location    @relation(fields: [locationId], references: [id])
+  locationId      String
+  service         Service     @relation(fields: [serviceId], references: [id])
+  serviceId       String
+  versao          CronogramaVersao? @relation(fields: [versaoId], references: [id])
+  versaoId        String?
+  
+  dependencies    Dependency[] @relation("DependencyOf")
+  requiredBy      Dependency[] @relation("RequiredBy")
+  diarioAtivs     DiarioAtividade[]
+  restricoes      Restricao[] // PONTO 1 - ADICIONADO
+  createdAt       DateTime    @default(now())
+}
+
+// PONTO 1 - MODELO RESTRIÇÃO ADICIONADO
+model Restricao {
+  id          String    @id @default(cuid())
+  descricao   String
+  resolvido   Boolean   @default(false)
+  atividade   Atividade @relation(fields: [atividadeId], references: [id])
+  atividadeId String
+  createdAt   DateTime  @default(now())
+}
+
+model Dependency {
+  id              String    @id @default(cuid())
+  predecessor     Atividade @relation("DependencyOf", fields: [predecessorId], references: [id])
+  predecessorId   String
+  successor       Atividade @relation("RequiredBy", fields: [successorId], references: [id])
+  successorId     String
+  type            String    @default("FS") // FS, SS, FF, SF
+  lag             Int       @default(0)
+}
+
+model Diario {
+  id               String            @id @default(cuid())
+  date             DateTime
+  weatherMorning   String?
+  weatherAfternoon String?
+  weatherNight     String?
+  notes            String?
+  ocorrencias      String?           // JSON String
+  equipamentos     String?           // JSON String
+  obra             Obra              @relation(fields: [obraId], references: [id])
+  obraId           String
+  atividades       DiarioAtividade[]
+  efetivos         Efetivo[]
+  fotos            Foto[]
+  createdAt        DateTime          @default(now())
+
+  @@unique([obraId, date]) // PONTO 9 - IMPEDIR DUPLICATAS
+}
+
+model DiarioAtividade {
+  id                    String    @id @default(cuid())
+  diario                Diario    @relation(fields: [diarioId], references: [id])
+  diarioId              String
+  atividade             Atividade @relation(fields: [atividadeId], references: [id])
+  atividadeId           String
+  progress              Float
+  status                String?
+  quantidadeTrabalhadores Int     @default(0)
+  fotosAtividade        String?   // JSON array of {url, caption}
+  apontamentos          Apontamento[]
+}
+
+model Efetivo {
+  id           String        @id @default(cuid())
+  role         String
+  count        Int
+  diario       Diario        @relation(fields: [diarioId], references: [id])
+  diarioId     String
+  apontamentos Apontamento[]
+}
+
+model Apontamento {
+  id                String          @id @default(cuid())
+  efetivo           Efetivo         @relation(fields: [efetivoId], references: [id])
+  efetivoId         String
+  diarioAtividade   DiarioAtividade @relation(fields: [diarioAtividadeId], references: [id])
+  diarioAtividadeId String
+}
+
+model DependenciaServico {
+  id                   String  @id @default(cuid())
+  obraId               String
+  servicoPredecessorId String
+  servicoSucessorId    String
+  lagDias              Int     @default(0)
+
+  servicoPredecessor   Service @relation("Predecessor", fields: [servicoPredecessorId], references: [id])
+  servicoSucessor      Service @relation("Sucessor", fields: [servicoSucessorId], references: [id])
+}
+
+model Foto {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  diario    Diario   @relation(fields: [diarioId], references: [id])
+  diarioId  String
+  createdAt DateTime @default(now())
+}

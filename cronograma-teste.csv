@@ -1,0 +1,11 @@
+Local,Serviço,Data Início,Data Término,Custo,Peso
+Térreo,Fundação,2026-06-01,2026-06-15,50000,10
+Térreo,Estrutura,2026-06-16,2026-06-30,40000,15
+1º Andar,Estrutura,2026-07-01,2026-07-15,40000,15
+1º Andar,Alvenaria,2026-07-16,2026-07-30,20000,10
+2º Andar,Estrutura,2026-07-16,2026-07-30,40000,15
+2º Andar,Alvenaria,2026-08-01,2026-08-15,20000,10
+Térreo,Pintura,2026-08-01,2026-08-15,10000,5
+1º Andar,Pintura,2026-08-16,2026-08-30,10000,5
+2º Andar,Pintura,2026-09-01,2026-09-15,10000,5
+Geral,Limpeza Final,2026-09-16,2026-09-20,5000,10
