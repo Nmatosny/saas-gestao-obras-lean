@@ -91,9 +91,8 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
 
   const handleImported = useCallback(() => {
     refresh()
-    setAba('planejamento')
-    setSubAba('gantt')
-  }, [refresh])
+    handleSetAba('planejamento', 'locais')
+  }, [refresh, handleSetAba])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -159,12 +158,12 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
       <div className="flex flex-col md:flex-row gap-4 mb-10 no-print relative z-20">
         <div className="bg-slate-200/40 p-1.5 rounded-[1.5rem] flex gap-1 border border-slate-200/60 overflow-x-auto flex-1 shadow-inner">
           {[
-            { id: 'overview',      name: 'Painel Geral',  icon: <LayoutDashboard className="w-4 h-4" /> },
-            { id: 'planejamento',  name: '1. Planejar',   icon: <Layers className="w-4 h-4" /> },
-            { id: 'campo',         name: '2. Executar',   icon: <Package className="w-4 h-4" /> },
-            { id: 'gestao',        name: '3. Medir (RDO)', icon: <TrendingUp className="w-4 h-4" /> },
-            { id: 'controladoria', name: '4. Analisar',   icon: <FileCheck className="w-4 h-4" /> },
-            { id: 'relatorio',     name: 'Executivo',     icon: <Rocket className="w-4 h-4" /> },
+            { id: 'overview',      name: 'Painel de Controle', icon: <LayoutDashboard className="w-4 h-4" /> },
+            { id: 'planejamento',  name: '1. Estruturar Plano', icon: <Layers className="w-4 h-4" /> },
+            { id: 'programacao',   name: '2. Programar Semana', icon: <Calendar className="w-4 h-4" /> },
+            { id: 'campo',         name: '3. Gerir Produção',   icon: <Package className="w-4 h-4" /> },
+            { id: 'gestao',        name: '4. Medição (RDO)',    icon: <TrendingUp className="w-4 h-4" /> },
+            { id: 'controladoria', name: '5. Analisar Desvios', icon: <FileCheck className="w-4 h-4" /> },
           ].map(t => (
             <button
               key={t.id}
@@ -178,26 +177,6 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
           ))}
         </div>
 
-        <div className="flex gap-2 shrink-0 bg-white/50 p-1.5 rounded-[1.5rem] border border-slate-200/40">
-          <button
-            onClick={handleShare}
-            title="Compartilhar Link"
-            className={`w-12 h-12 rounded-xl transition-all flex items-center justify-center border ${
-              shareFeedback
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'
-            }`}
-          >
-            {shareFeedback ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={handlePrint}
-            title="Imprimir Relatório"
-            className="w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-300 rounded-xl transition-all flex items-center justify-center"
-          >
-            <FileText className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       <main className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -251,19 +230,29 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
 
+        {aba === 'programacao' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ProgramacaoObras
+              atividades={atividades}
+              versoes={versoes}
+              onUpdate={handleUpdateAtividade}
+              onComplete={() => { handleSetAba('campo', 'kanban'); refresh() }}
+            />
+          </div>
+        )}
+
         {aba === 'campo' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex gap-8 border-b border-slate-100 pb-4 overflow-x-auto no-print">
               {[
-                { id: 'programacao', label: 'Programação' },
-                { id: 'kanban',      label: 'Kanban' },
-                { id: 'lookahead',   label: 'Lookahead' },
+                { id: 'kanban',      label: 'Painel de Produção' },
+                { id: 'lookahead',   label: 'Lookahead 4 Semanas' },
               ].map(s => (
                 <button
                   key={s.id}
                   onClick={() => setSubAba(s.id)}
                   className={`text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
-                    subAba === s.id ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'
+                    subAba === s.id || (!['kanban', 'lookahead'].includes(subAba) && s.id === 'kanban') ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
                   {s.label}
@@ -271,14 +260,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
               ))}
             </div>
 
-            {subAba === 'programacao' ? (
-              <ProgramacaoObras
-                atividades={atividades}
-                versoes={versoes}
-                onUpdate={handleUpdateAtividade}
-                onComplete={() => { setSubAba('kanban'); refresh() }}
-              />
-            ) : subAba === 'lookahead' ? (
+            {subAba === 'lookahead' ? (
               <LookaheadTab atividades={atividades} obraId={obraId} onRefresh={refresh} />
             ) : (
               <KanbanTarefas

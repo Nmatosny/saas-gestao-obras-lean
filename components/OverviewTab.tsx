@@ -226,8 +226,7 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
         title: 'Programar Semana',
         desc: 'Nenhuma atividade programada. Defina o foco da equipe para os próximos 7 dias.',
         label: 'Abrir Programação',
-        tab: 'campo',
-        subAba: 'programacao'
+        tab: 'programacao'
       }
     }
     if (diarios.length === 0) {
@@ -448,9 +447,9 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
         {/* ── QUICK NAV ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { tab: 'relatorio', icon: TrendingUp, label: 'Relatório Executivo', desc: 'Curva S, EVA e projeção de entrega.', bg: 'bg-blue-50', icon_color: 'text-blue-600' },
-            { tab: 'planejamento', icon: Activity, label: 'Plano de Ataque', desc: 'Linha de balanço, Gantt e dependências.', bg: 'bg-slate-50', icon_color: 'text-slate-600' },
-            { tab: 'controladoria', icon: Target, label: 'Controladoria', desc: 'CNC, forecast e PM virtual.', bg: 'bg-violet-50', icon_color: 'text-violet-600' },
+            { tab: 'planejamento', icon: Activity, label: 'Estruturar Plano', desc: 'Gantt, Linha de Balanço e Precedências.', bg: 'bg-slate-50', icon_color: 'text-slate-600' },
+            { tab: 'programacao', icon: Calendar, label: 'Programar Semana', desc: 'Definir pacote de trabalho.', bg: 'bg-blue-50', icon_color: 'text-blue-600' },
+            { tab: 'controladoria', icon: Target, label: 'Analisar Desvios', desc: 'CNC, forecast e Curva S.', bg: 'bg-violet-50', icon_color: 'text-violet-600' },
           ].map(({ tab, icon: Icon, label, desc, bg, icon_color }) => (
             <button
               key={tab}

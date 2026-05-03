@@ -34,10 +34,10 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   }, [])
 
   const columns = [
-    { id: 'programado', name: 'Programado', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'em_andamento', name: 'Em Andamento', icon: <Clock className="w-4 h-4" /> },
-    { id: 'concluido', name: 'Concluído', icon: <CheckCircle2 className="w-4 h-4" /> },
-    { id: 'impedido', name: 'Impedido', icon: <ShieldAlert className="w-4 h-4 text-red-500" /> },
+    { id: 'programado', name: 'Fila da Semana', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'em_andamento', name: 'Em Execução', icon: <Clock className="w-4 h-4" /> },
+    { id: 'concluido', name: 'Produção Concluída', icon: <CheckCircle2 className="w-4 h-4" /> },
+    { id: 'impedido', name: 'Com Impedimento', icon: <ShieldAlert className="w-4 h-4 text-red-500" /> },
   ]
 
   const services = useMemo(() => Array.from(new Set(atividades.map(a => a.service?.name).filter(Boolean))), [atividades])
@@ -178,13 +178,14 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                  </div>
                                )}
 
-                              <div className="flex items-center gap-3 mb-6">
-                                 <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                                    <Folder className="w-4 h-4" />
+                              <div className="mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100/50">
+                                 <div className="flex items-center gap-2 mb-2">
+                                    <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                    <p className="text-[11px] font-black text-slate-700 truncate" title={a.location?.name || 'Geral'}>{a.location?.name || 'Geral'}</p>
                                  </div>
-                                 <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Localização</p>
-                                    <p className="text-[10px] font-bold text-slate-600">{a.location?.name || 'Geral'}</p>
+                                 <div className="flex items-center gap-2">
+                                    <Layers className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{a.service?.name || 'Serviço Genérico'}</p>
                                  </div>
                               </div>
 

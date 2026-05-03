@@ -63,7 +63,7 @@ export default function ObraImportModal({ obraId, onClose, onImported }: ObraImp
          <div className="flex gap-4 mt-12">
             <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-slate-400 tracking-widest text-[10px]">Cancelar</button>
             <button onClick={handleImportar} disabled={!importFile || importando} className="flex-1 bg-blue-600 text-white py-5 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 disabled:opacity-50">
-               {importando ? 'Sincronizando Dados...' : 'Iniciar Importação'}
+               {importando ? 'Sincronizando...' : 'Importar e Validar Estrutura'}
             </button>
          </div>
       </div>
