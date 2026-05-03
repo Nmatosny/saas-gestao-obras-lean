@@ -77,10 +77,7 @@ export function useObraData(obraId: string) {
   }, [obraId]);
 
   useEffect(() => {
-    const init = async () => {
-      await carregarDados();
-    };
-    init();
+    carregarDados();
   }, [carregarDados]);
 
   return {
