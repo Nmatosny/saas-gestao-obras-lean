@@ -1,15 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 
 const prismaClientSingleton = () => {
-  console.log('Iniciando instância do Prisma...');
-  try {
-    return new PrismaClient({
-      log: ['query', 'info', 'warn', 'error'],
-    });
-  } catch (e: any) {
-    console.error('FALHA CRÍTICA AO INICIAR PRISMA:', e.message);
-    throw e;
-  }
+  const isDev = process.env.NODE_ENV !== 'production';
+  
+  return new PrismaClient({
+    log: isDev ? ['error', 'warn'] : ['error'],
+  });
 };
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;

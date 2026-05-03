@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
     const obraId = searchParams.get('obraId');
 
     if (!obraId) return NextResponse.json({ error: 'obraId é obrigatório' }, { status: 400 });
+
+    // TENANT GUARD
+    const isOwner = await validateObraOwnership(obraId, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const diarios = await prisma.diario.findMany({
       where: { obraId },
@@ -35,6 +43,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const body = await request.json();
     const { 
       date, 
@@ -53,6 +64,10 @@ export async function POST(request: Request) {
     if (!date || !obraId) {
       return NextResponse.json({ error: 'Data e obraId são obrigatórios' }, { status: 400 });
     }
+
+    // TENANT GUARD
+    const isOwner = await validateObraOwnership(obraId, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const existente = await prisma.diario.findFirst({
       where: { obraId, date: new Date(date) }
@@ -75,7 +90,6 @@ export async function POST(request: Request) {
         }
       });
 
-      // 2. Cria os Efetivos e mapeia para uso posterior
       const efetivoMap = new Map();
       if (efetivos && Array.isArray(efetivos)) {
         for (let i = 0; i < efetivos.length; i++) {
@@ -91,33 +105,47 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. Cria as Atividades do Diário e os Apontamentos de Efetivo
       if (atividades && Array.isArray(atividades)) {
         for (const act of atividades) {
+          // Busca dados atuais da atividade para cálculo acumulado
+          const currentAtiv = await tx.atividade.findUnique({
+            where: { id: act.atividadeId },
+            select: { progress: true, quantidadeTotal: true }
+          });
+
+          if (!currentAtiv) continue;
+
+          const qtyToday = Number(act.quantidadeRealizada) || 0;
+          const totalQty = currentAtiv.quantidadeTotal || 100;
+          
+          // Se informou quantidade, calcula o progresso acumulado
+          // Caso contrário, usa o progresso informado (fallback legado)
+          let newProgress = Number(act.progress);
+          if (qtyToday > 0) {
+            const currentProgressQty = (currentAtiv.progress / 100) * totalQty;
+            newProgress = Math.min(100, ((currentProgressQty + qtyToday) / totalQty) * 100);
+          }
+
           const diarioAtividade = await tx.diarioAtividade.create({
             data: {
               diarioId: diario.id,
               atividadeId: act.atividadeId,
-              progress: Number(act.progress),
+              progress: newProgress,
+              quantidadeRealizada: qtyToday,
               status: act.status,
               quantidadeTrabalhadores: Number(act.quantidadeTrabalhadores) || 0,
               fotosAtividade: act.fotosAtividade ? JSON.stringify(act.fotosAtividade) : null,
             }
           });
 
-          // Atualiza o progresso global da atividade
-          // Nota: Em um sistema real, aqui somaríamos o progresso ou calcularíamos o total.
-          // Para o MVP, vamos assumir que o progresso enviado é o acumulado ou o mestre está informando o total.
           await tx.atividade.update({
             where: { id: act.atividadeId },
             data: { 
-              progress: Number(act.progress),
-              // Se bater 100%, move o status do Kanban automaticamente
-              status: Number(act.progress) >= 100 ? 'concluido' : 'em_andamento'
+              progress: newProgress,
+              status: newProgress >= 100 ? 'concluido' : 'em_andamento'
             }
           });
 
-          // Linka com o Efetivo (Apontamento)
           if (act.efetivoIndices && Array.isArray(act.efetivoIndices)) {
             for (const index of act.efetivoIndices) {
               const efetivoId = efetivoMap.get(index);
@@ -134,7 +162,6 @@ export async function POST(request: Request) {
         }
       }
 
-      // 4. Cria as Fotos (Evidências)
       if (fotos && Array.isArray(fotos)) {
         for (const foto of fotos) {
           await tx.foto.create({

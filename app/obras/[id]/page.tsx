@@ -3,7 +3,8 @@
 import { useState, use } from 'react'
 import { 
   Layers, TrendingUp, FileCheck, Rocket, 
-  Share2, FileText, AlertCircle, Package
+  Share2, FileText, AlertCircle, Package,
+  LayoutDashboard
 } from 'lucide-react'
 import KanbanTarefas from '@/components/KanbanTarefas'
 import CronogramaGantt from '@/components/CronogramaGantt'
@@ -17,10 +18,11 @@ import LookaheadTab from '@/components/LookaheadTab'
 import DiarioDetalhes from '@/components/DiarioDetalhes'
 import GestaoLocais from '@/components/GestaoLocais'
 import ControladoriaTab from '@/components/ControladoriaTab'
-import DependenciasServico from '@/components/DependenciasServico'
 import ExecutiveDashboard from '@/components/ExecutiveDashboard'
 import ObraHeader from '@/components/ObraHeader'
 import ObraImportModal from '@/components/ObraImportModal'
+import OverviewTab from '@/components/OverviewTab'
+import OnboardingWizard from '@/components/OnboardingWizard'
 import { useObraData } from '@/hooks/useObraData'
 
 export default function ObraPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,13 +33,26 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     hasBaseline, loading, error, refresh 
   } = useObraData(obraId)
 
-  const [aba, setAba] = useState('planejamento')
+  const [aba, setAba] = useState('overview')
   const [subAba, setSubAba] = useState('gantt')
   
   const [showImport, setShowImport] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedDiario, setSelectedDiario] = useState<any>(null)
   const [showRdoForm, setShowRdoForm] = useState(false)
+  const [showWizard, setShowWizard] = useState(true) // Mostra no primeiro acesso
+
+  // FUNÇÃO: Compartilhar Obra
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    alert('Link da obra copiado para a área de transferência! 🔗');
+  };
+
+  // FUNÇÃO: PDF Flash (Impressão)
+  const handlePrint = () => {
+    window.print();
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -63,9 +78,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     </div>
   )
 
-  // Lógica de Jornada (Maturidade)
   const ativsProgramadas = atividades.filter(a => a.scheduled)
-  const ativsEmAndamento = ativsProgramadas.filter(a => a.status === 'em_andamento')
   
   const steps = [
     { label: 'Cronograma', done: atividades.length > 0, info: 'Importe o plano mestre.' },
@@ -97,36 +110,45 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
       />
 
       {/* Navegação */}
-      <div className="flex flex-col md:flex-row gap-8 mb-10">
-         <div className="bg-slate-200/40 p-1 rounded-2xl flex gap-1 border border-slate-200/60">
+      <div className="flex flex-col md:flex-row gap-8 mb-10 no-print">
+         <div className="bg-slate-200/40 p-1 rounded-2xl flex gap-1 border border-slate-200/60 overflow-x-auto">
             {[
+              { id: 'overview', name: 'Resumo', icon: <LayoutDashboard className="w-4 h-4" /> },
               { id: 'planejamento', name: 'Planejamento', icon: <Layers className="w-4 h-4" /> },
               { id: 'campo', name: 'Produção', icon: <Package className="w-4 h-4" /> },
               { id: 'gestao', name: 'Medição', icon: <TrendingUp className="w-4 h-4" /> },
               { id: 'controladoria', name: 'Controladoria', icon: <FileCheck className="w-4 h-4" /> },
               { id: 'relatorio', name: 'Executivo', icon: <Rocket className="w-4 h-4" /> },
             ].map(t => (
-              <button key={t.id} onClick={() => setAba(t.id)} className={`px-6 py-3 rounded-xl text-[11px] font-black transition-all flex items-center gap-2 uppercase tracking-tight ${aba === t.id ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+              <button key={t.id} onClick={() => setAba(t.id)} className={`px-6 py-3 rounded-xl text-[11px] font-black transition-all flex items-center gap-2 uppercase tracking-tight shrink-0 ${aba === t.id ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
                 {t.icon} {t.name}
               </button>
             ))}
          </div>
          <div className="flex gap-3">
-            <button className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+            <button 
+              onClick={handleShare}
+              className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+            >
                <Share2 className="w-3.5 h-3.5" /> Compartilhar
             </button>
-            <button className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10">
+            <button 
+              onClick={handlePrint}
+              className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10"
+            >
                <FileText className="w-3.5 h-3.5" /> PDF Flash
             </button>
          </div>
       </div>
 
       <main className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+         {aba === 'overview' && <OverviewTab atividades={atividades} diarios={diarios} obra={obra} onSetAba={setAba} />}
+         
          {aba === 'planejamento' && (
            <div className="space-y-10">
-              <div className="flex gap-8 border-b border-slate-100 pb-4">
+              <div className="flex gap-8 border-b border-slate-100 pb-4 overflow-x-auto no-print">
                  {['gantt', 'fluxo', 'locais', 'dependencias'].map(s => (
-                   <button key={s} onClick={() => setSubAba(s)} className={`text-[10px] font-black uppercase tracking-widest transition-all ${subAba === s ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'}`}>
+                   <button key={s} onClick={() => setSubAba(s)} className={`text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${subAba === s ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'}`}>
                      {s === 'gantt' ? 'Cronograma' : s === 'fluxo' ? 'Linha de Balanço' : s === 'locais' ? 'Estrutura' : 'Precedência'}
                    </button>
                  ))}
@@ -140,7 +162,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
               ) : (
                 subAba === 'gantt' ? <CronogramaGantt atividades={atividades} onUpdateAtividade={handleUpdateAtividade} /> :
                 subAba === 'locais' ? <GestaoLocais obraId={obraId} onLocaisChange={refresh} /> :
-                subAba === 'dependencias' ? <DependenciasServico obraId={obraId} /> :
+                subAba === 'dependencias' ? <IntelligenceTab atividades={atividades} diarios={diarios} /> : // Ajuste temporário
                 <LinhaBalanco atividades={atividades} dependencias={dependencias} />
               )}
            </div>
@@ -148,9 +170,9 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
 
          {aba === 'campo' && (
            <div className="space-y-8">
-              <div className="flex gap-8 border-b border-slate-100 pb-4">
+              <div className="flex gap-8 border-b border-slate-100 pb-4 overflow-x-auto no-print">
                  {['programacao', 'kanban', 'lookahead'].map(s => (
-                   <button key={s} onClick={() => setSubAba(s)} className={`text-[10px] font-black uppercase tracking-widest transition-all ${subAba === s ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'}`}>
+                   <button key={s} onClick={() => setSubAba(s)} className={`text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${subAba === s ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'}`}>
                      {s === 'programacao' ? 'Programação' : s === 'kanban' ? 'Kanban' : 'Lookahead'}
                    </button>
                  ))}
@@ -177,13 +199,19 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
                   selectedDiario ? <DiarioDetalhes diario={selectedDiario} onClose={() => setSelectedDiario(null)} /> :
                   <><IntelligenceTab atividades={atividades} diarios={diarios} /><div className="bg-white p-10 rounded-2xl border border-slate-100 shadow-sm"><CurvaSChart obraId={obraId} /></div></>}
               </div>
-              <div>
+              <div className="no-print">
                  <CalendarioRdo diarios={diarios} onSelectDay={(d, date) => { setSelectedDate(date); setSelectedDiario(d); setShowRdoForm(false) }} onNewRdo={(date) => { setSelectedDate(date); setSelectedDiario(null); setShowRdoForm(true) }} />
               </div>
            </div>
          )}
       </main>
 
+      {/* WIZARD DE ONBOARDING (Mostra apenas em obra vazia) */}
+      {showWizard && atividades.length === 0 && !loading && (
+        <OnboardingWizard onClose={() => setShowWizard(false)} />
+      )}
+
+      {/* MODAL: Importar */}
       {showImport && <ObraImportModal obraId={obraId} onClose={() => setShowImport(false)} onImported={refresh} />}
     </div>
   )

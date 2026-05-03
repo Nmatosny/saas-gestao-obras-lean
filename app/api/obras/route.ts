@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { MetricsEngine } from '@/lib/metrics';
 import { getWorkspaceSession, unauthorizedResponse } from '@/lib/auth';
+import { obraSchema } from '@/lib/validations';
 
 export async function GET(request: Request) {
   try {
@@ -72,19 +73,27 @@ export async function POST(request: Request) {
     if (!workspaceId) return unauthorizedResponse();
 
     const body = await request.json();
-    const { name, description } = body;
+    
+    // VALIDATION (ZOD)
+    const validation = obraSchema.safeParse({
+      nome: body.nome || body.name,
+      descricao: body.descricao || body.description,
+      endereco: body.endereco,
+      engenheiro: body.engenheiro,
+    });
 
-    const finalName = name || body.nome;
-    const finalDesc = description || body.descricao;
-
-    if (!finalName) {
-      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 });
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Dados inválidos', details: validation.error.format() }, { status: 400 });
     }
+
+    const { nome, descricao, endereco, engenheiro } = validation.data;
 
     const obra = await prisma.obra.create({
       data: {
-        nome: finalName,
-        descricao: finalDesc,
+        nome,
+        descricao,
+        endereco,
+        engenheiro,
         workspaceId,
       },
     });

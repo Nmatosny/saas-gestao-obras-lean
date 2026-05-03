@@ -7,11 +7,17 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'arial']
 });
 
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+  fallback: ['sans-serif']
 });
 
 export const metadata: Metadata = {

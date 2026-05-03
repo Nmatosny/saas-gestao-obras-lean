@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import * as xlsx from 'xlsx';
 import { parseStringPromise } from 'xml2js';
+import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const obraId = formData.get('obraId') as string;
@@ -12,6 +16,10 @@ export async function POST(request: Request) {
     if (!file || !obraId) {
       return NextResponse.json({ error: 'Arquivo e obraId são obrigatórios' }, { status: 400 });
     }
+
+    // TENANT GUARD: Validar se a obra de destino pertence ao workspace do usuário logado
+    const isOwner = await validateObraOwnership(obraId, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const mappingStr = formData.get('mapping') as string;
     let mapping = null;
@@ -25,11 +33,9 @@ export async function POST(request: Request) {
 
     let activitiesToCreate: Array<{ local: string, servico: string, inicio: Date, fim: Date, custo: number, peso: number }> = [];
 
-    // Função auxiliar para interpretar datas de Excel e pt-BR
     const parseExcelDate = (value: any): Date => {
       if (!value) return new Date();
       if (typeof value === 'number') {
-        // Serial de data do Excel para JS
         return new Date((value - 25569) * 86400 * 1000);
       }
       if (typeof value === 'string') {
@@ -42,7 +48,6 @@ export async function POST(request: Request) {
       return isNaN(d.getTime()) ? new Date() : d;
     };
 
-    // --- IMPORTAÇÃO EXCEL ---
     if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.csv')) {
       const workbook = xlsx.read(buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
@@ -50,11 +55,9 @@ export async function POST(request: Request) {
       const rows: any[] = xlsx.utils.sheet_to_json(sheet);
 
       activitiesToCreate = rows.map((row: any) => {
-        
         let valLocal, valServico, valInicio, valFim, valCusto, valPeso;
 
         if (mapping) {
-          // Usa o mapeamento estrito fornecido pela tela (De-Para)
           valLocal = row[mapping.local];
           valServico = row[mapping.servico];
           valInicio = row[mapping.inicio];
@@ -62,7 +65,6 @@ export async function POST(request: Request) {
           valCusto = row[mapping.custo];
           valPeso = row[mapping.peso];
         } else {
-          // Fallback: Tentativa inteligente (Importação 1-Click)
           const getVal = (possibleNames: string[]) => {
             for (const key of Object.keys(row)) {
               if (possibleNames.includes(key.toLowerCase().trim())) return row[key];
@@ -82,11 +84,10 @@ export async function POST(request: Request) {
           inicio: parseExcelDate(valInicio),
           fim: parseExcelDate(valFim),
           custo: Number(valCusto) || 0,
-          peso: 1, // Peso ignorado pois será substituído por Kanban no futuro
+          peso: 1,
         };
       });
     }
-    // --- IMPORTAÇÃO MS PROJECT (XML) ---
     else if (filename.endsWith('.xml')) {
       const xmlString = buffer.toString('utf-8');
       const result = await parseStringPromise(xmlString);
@@ -97,24 +98,18 @@ export async function POST(request: Request) {
       }
 
       const tasks = project.Tasks[0].Task;
-      
-      // Cria um dicionário de tarefas para achar os "pais" (Locais)
       const taskDict: Record<string, any> = {};
       tasks.forEach((t: any) => {
         if (t.UID) taskDict[t.UID[0]] = t;
       });
 
       tasks.forEach((task: any) => {
-        // Ignora tarefas de resumo (pastas principais) e foca apenas nas tarefas "folhas" (serviços reais)
         const isSummary = task.Summary && task.Summary[0] === '1';
         if (isSummary) return;
         
-        // Se não for resumo, tenta pegar o nome do pai como "Local"
         let localName = 'Geral';
-        // MS Project usa WBS (Estrutura Analítica) ou ParentTaskUID
         const parentWBS = task.WBS ? task.WBS[0].split('.').slice(0, -1).join('.') : null;
         
-        // Tenta achar a tarefa pai baseada no WBS (Ex: Se for 1.2.1, o pai é 1.2)
         if (parentWBS) {
           const parentTask = tasks.find((t: any) => t.WBS && t.WBS[0] === parentWBS);
           if (parentTask && parentTask.Name) {
@@ -128,11 +123,10 @@ export async function POST(request: Request) {
           inicio: task.Start ? new Date(task.Start[0]) : new Date(),
           fim: task.Finish ? new Date(task.Finish[0]) : new Date(),
           custo: task.Cost ? Number(task.Cost[0]) : 0,
-          peso: task.Work ? Number(task.Work[0].replace('PT','').replace('H','')) : 0, // Simplificação de peso baseado em trabalho
+          peso: task.Work ? Number(task.Work[0].replace('PT','').replace('H','')) : 0,
         });
       });
     } 
-    // --- MENSAGEM EDUCATIVA PARA .MPP ---
     else if (filename.endsWith('.mpp')) {
       return NextResponse.json({ error: 'Formato fechado da Microsoft não suportado. Por favor, abra o MS Project, vá em "Salvar Como -> Dados XML (*.xml)" e envie o arquivo gerado para garantirmos a precisão.' }, { status: 400 });
     } 
@@ -144,10 +138,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nenhuma atividade válida encontrada no arquivo.' }, { status: 400 });
     }
 
-    // --- SALVAR NO BANCO DE DADOS EM TRANSAÇÃO ---
     const result = await prisma.$transaction(async (tx) => {
-      
-      // 1. Desativa versões anteriores e cria nova versão ativa
       await tx.cronogramaVersao.updateMany({
         where: { obraId, ativa: true },
         data: { ativa: false }
@@ -169,7 +160,6 @@ export async function POST(request: Request) {
       let locOrderCounter = existingLocations.length;
 
       for (const act of activitiesToCreate) {
-        // Resolve Local
         const locNameLower = act.local.toLowerCase();
         let locationId = locMap.get(locNameLower);
         if (!locationId) {
@@ -180,7 +170,6 @@ export async function POST(request: Request) {
           locMap.set(locNameLower, locationId);
         }
 
-        // Resolve Servico
         const servNameLower = act.servico.toLowerCase();
         let serviceId = servMap.get(servNameLower);
         if (!serviceId) {
@@ -191,7 +180,6 @@ export async function POST(request: Request) {
           servMap.set(servNameLower, serviceId);
         }
 
-        // Cria a atividade vinculada à VERSÃO do arquivo
         await tx.atividade.create({
           data: {
             name: `${act.servico} - ${act.local}`,
@@ -202,7 +190,7 @@ export async function POST(request: Request) {
             locationId,
             serviceId,
             obraId,
-            versaoId: versao.id // Vincula à versão criada
+            versaoId: versao.id
           }
         });
       }

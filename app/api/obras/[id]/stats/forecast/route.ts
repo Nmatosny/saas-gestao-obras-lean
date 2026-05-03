@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { MetricsEngine } from '@/lib/metrics';
+import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -7,99 +9,72 @@ export async function GET(
 ) {
   try {
     const { id: obraId } = await params;
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
+    // TENANT GUARD
+    const isOwner = await validateObraOwnership(obraId, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const atividades = await prisma.atividade.findMany({
-      where: { obraId },
-      select: {
-        id: true,
-        startDate: true,
-        endDate: true,
-        progress: true,
-        status: true,
-        serviceId: true,
-        service: { select: { name: true, color: true } }
-      }
+      where: { obraId, scheduled: true },
+      include: { service: true }
     });
 
     if (atividades.length === 0) {
       return NextResponse.json({ conclusaoPlanejada: null, conclusaoProjetada: null, deltasDias: 0, porServico: [] });
     }
 
-    // Duração real medida nos diários (velocidade real de progresso)
-    const historicoAvancos = await prisma.diarioAtividade.findMany({
-      where: { diario: { obraId } },
-      include: { diario: { select: { date: true } } },
-      orderBy: { diario: { date: 'asc' } }
-    });
-
     const today = new Date();
-    const conclusaoPlanejada = new Date(Math.max(...atividades.map(a => a.endDate.getTime())));
+    
+    // Conclusão Planejada (Fim da última atividade no cronograma)
+    const planejadoDates = atividades.map(a => new Date(a.endDate).getTime());
+    const conclusaoPlanejada = new Date(Math.max(...planejadoDates));
 
-    // Velocidade geral: % de progresso / dias passados
-    const startObra = new Date(Math.min(...atividades.map(a => a.startDate.getTime())));
-    const diasPassados = Math.max(1, (today.getTime() - startObra.getTime()) / 86400000);
+    // Forecast por Atividade usando MetricsEngine v2 (Não-linear)
+    const servicoStats: any = {};
 
-    const totalWeight = atividades.length;
-    const currentProgress = atividades.reduce((acc, a) => acc + a.progress, 0) / totalWeight;
-    const velocidadeDiaria = currentProgress / diasPassados;
-
-    let conclusaoProjetada: Date | null = null;
-    let deltasDias = 0;
-
-    if (velocidadeDiaria > 0 && currentProgress < 100) {
-      const diasRestantes = (100 - currentProgress) / velocidadeDiaria;
-      conclusaoProjetada = new Date(today.getTime() + diasRestantes * 86400000);
-      deltasDias = Math.round((conclusaoProjetada.getTime() - conclusaoPlanejada.getTime()) / 86400000);
-    } else if (currentProgress >= 100) {
-      conclusaoProjetada = today;
-      deltasDias = Math.round((today.getTime() - conclusaoPlanejada.getTime()) / 86400000);
-    }
-
-    // Por serviço: velocidade individual
-    const servicoMap = new Map<string, { name: string; color: string; progresso: number; planned: Date; projetada: Date | null; delta: number }>();
-    const groupedByService = new Map<string, typeof atividades>();
     atividades.forEach(a => {
-      if (!groupedByService.has(a.serviceId)) groupedByService.set(a.serviceId, []);
-      groupedByService.get(a.serviceId)!.push(a);
-    });
+      const projetada = MetricsEngine.calculateForecast(new Date(a.startDate), a.progress, today);
+      const servName = a.service?.name || 'Geral';
+      const plannedEnd = new Date(a.endDate);
+      
+      const delta = projetada 
+        ? Math.round((projetada.getTime() - plannedEnd.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
 
-    groupedByService.forEach((atvsServico, serviceId) => {
-      const svc = atvsServico[0].service!;
-      const svcPlanned = new Date(Math.max(...atvsServico.map(a => a.endDate.getTime())));
-      const svcStart = new Date(Math.min(...atvsServico.map(a => a.startDate.getTime())));
-      const svcDiasPassados = Math.max(1, (today.getTime() - svcStart.getTime()) / 86400000);
-      const svcProgress = atvsServico.reduce((s, a) => s + a.progress, 0) / atvsServico.length;
-      const svcVel = svcProgress / svcDiasPassados;
-
-      let svcProjetada: Date | null = null;
-      let svcDelta = 0;
-      if (svcVel > 0 && svcProgress < 100) {
-        const dias = (100 - svcProgress) / svcVel;
-        svcProjetada = new Date(today.getTime() + dias * 86400000);
-        svcDelta = Math.round((svcProjetada.getTime() - svcPlanned.getTime()) / 86400000);
-      } else if (svcProgress >= 100) {
-        svcProjetada = today;
-        svcDelta = Math.round((today.getTime() - svcPlanned.getTime()) / 86400000);
+      if (!servicoStats[servName] || delta > servicoStats[servName].delta) {
+        servicoStats[servName] = {
+          name: servName,
+          color: a.service?.color || '#3b82f6',
+          progresso: a.progress,
+          planned: plannedEnd.toISOString(),
+          projetada: projetada ? projetada.toISOString() : null,
+          delta
+        };
       }
-
-      servicoMap.set(serviceId, {
-        name: svc.name,
-        color: svc.color,
-        progresso: Math.round(svcProgress),
-        planned: svcPlanned,
-        projetada: svcProjetada,
-        delta: svcDelta
-      });
     });
+
+    // Conclusão Projetada Global (Pior cenário das atividades)
+    const projetadaDates = atividades
+      .map(a => MetricsEngine.calculateForecast(new Date(a.startDate), a.progress, today))
+      .filter(d => d !== null)
+      .map(d => d!.getTime());
+    
+    const conclusaoProjetada = projetadaDates.length > 0 
+      ? new Date(Math.max(...projetadaDates)) 
+      : conclusaoPlanejada;
+
+    const deltaTotal = Math.round((conclusaoProjetada.getTime() - conclusaoPlanejada.getTime()) / (1000 * 60 * 60 * 24));
 
     return NextResponse.json({
       conclusaoPlanejada: conclusaoPlanejada.toISOString(),
-      conclusaoProjetada: conclusaoProjetada?.toISOString() ?? null,
-      deltasDias,
-      porServico: Array.from(servicoMap.values())
+      conclusaoProjetada: conclusaoProjetada.toISOString(),
+      deltasDias: deltaTotal,
+      porServico: Object.values(servicoStats)
     });
+
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Erro ao calcular forecast' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro no forecast' }, { status: 500 });
   }
 }

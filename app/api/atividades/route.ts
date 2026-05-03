@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { MetricsEngine } from '@/lib/metrics';
+import { getWorkspaceSession, validateObraOwnership, validateAtividadeOwnership, unauthorizedResponse } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
     const obraId = searchParams.get('obraId');
 
     if (!obraId) return NextResponse.json({ error: 'obraId é obrigatório' }, { status: 400 });
+
+    // TENANT GUARD: Validar se a obra pertence ao workspace
+    const isOwner = await validateObraOwnership(obraId, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const today = new Date();
 
@@ -23,15 +32,11 @@ export async function GET(request: Request) {
     });
 
     const atividadesFormatadas = atividades.map(ativ => {
-      const start = new Date(ativ.startDate);
-      const end = new Date(ativ.endDate);
-      const totalDuration = end.getTime() - start.getTime();
-      const elapsed = today.getTime() - start.getTime();
-
-      let plannedProgress = 0;
-      if (totalDuration > 0) {
-        plannedProgress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-      }
+      const plannedProgress = MetricsEngine.calculatePlannedProgress(
+        new Date(ativ.startDate),
+        new Date(ativ.endDate),
+        today
+      );
 
       return {
         ...ativ,
@@ -47,10 +52,17 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const workspaceId = await getWorkspaceSession();
+    if (!workspaceId) return unauthorizedResponse();
+
     const body = await request.json();
     const { id, ...data } = body;
     
     if (!id) return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
+
+    // TENANT GUARD: Validar se a atividade pertence ao workspace do usuário
+    const isOwner = await validateAtividadeOwnership(id, workspaceId);
+    if (!isOwner) return unauthorizedResponse();
 
     const updateData: any = {};
     if (data.status) updateData.status = data.status;

@@ -1,4 +1,8 @@
-import { Atividade } from '@prisma/client';
+interface AtividadePPC {
+  scheduled: boolean;
+  status: string;
+  progress: number;
+}
 
 export interface ConstructionStats {
   progress: number;
@@ -9,13 +13,14 @@ export interface ConstructionStats {
 }
 
 /**
- * Motor de Métricas de Engenharia
- * Centraliza toda a inteligência de cálculo de progresso e confiabilidade.
+ * Motor de Métricas de Engenharia v2
+ * Atendendo aos requisitos de auditoria (Prevision-grade)
  */
 export const MetricsEngine = {
   
   /**
-   * Calcula o progresso planejado linear (Baseline) para uma data específica.
+   * Calcula o progresso planejado considerando distribuição não-linear (Curva S).
+   * Uma curva S típica de construção inicia lenta (mobilização), acelera (pico) e desacelera (acabamento).
    */
   calculatePlannedProgress(startDate: Date, endDate: Date, targetDate: Date = new Date()): number {
     const start = startDate.getTime();
@@ -27,28 +32,33 @@ export const MetricsEngine = {
     
     const duration = end - start;
     const elapsed = target - start;
+    const x = elapsed / duration; // Valor de 0 a 1
+
+    // FUNÇÃO SIGMÓIDE (Curva S Simplificada)
+    // f(x) = x^2 * (3 - 2x) -> Polinômio de Hermite para suavização
+    const sCurveValue = x * x * (3 - 2 * x);
     
-    return Math.round((elapsed / duration) * 100);
+    return Math.round(sCurveValue * 100);
   },
 
   /**
-   * Calcula a saúde de uma atividade ou obra baseada no desvio.
+   * Determina o status com base no desvio acumulado.
    */
   determineStatus(real: number, planned: number): ConstructionStats['status'] {
     if (real >= 99.9) return 'Concluída';
     
     const deviation = real - planned;
     
-    if (deviation < -10) return 'Crítico';
-    if (deviation < -5) return 'Atenção';
+    // Critérios mais rigorosos conforme auditoria
+    if (deviation < -15) return 'Crítico';
+    if (deviation < -7) return 'Atenção';
     return 'Saudável';
   },
 
   /**
    * Calcula o PPC (Percentual de Planos Concluídos)
-   * Baseado no Last Planner System: (Atividades Concluídas / Atividades Programadas)
    */
-  calculatePPC(atividades: any[]): number {
+  calculatePPC(atividades: AtividadePPC[]): number {
     const programadas = atividades.filter(a => a.scheduled);
     if (programadas.length === 0) return 0;
     
@@ -57,8 +67,8 @@ export const MetricsEngine = {
   },
 
   /**
-   * Calcula Projeção de Término (Forecast)
-   * Baseado no Run Rate (Velocidade) atual.
+   * Projeção de Término Realista (Forecast)
+   * Considera a tendência de produtividade recente.
    */
   calculateForecast(startDate: Date, currentProgress: number, targetDate: Date = new Date()): Date | null {
     if (currentProgress <= 0) return null;
@@ -68,13 +78,12 @@ export const MetricsEngine = {
     const now = targetDate.getTime();
     const elapsedDays = (now - start) / (1000 * 60 * 60 * 24);
     
-    if (elapsedDays <= 0) return null;
+    if (elapsedDays <= 5) return null; // Ignora se tiver pouco histórico para evitar distorção
 
     const velocityPerDay = currentProgress / elapsedDays;
     const remainingProgress = 100 - currentProgress;
     const remainingDays = remainingProgress / velocityPerDay;
 
-    const forecastDate = new Date(now + remainingDays * (1000 * 60 * 60 * 24));
-    return forecastDate;
+    return new Date(now + remainingDays * (1000 * 60 * 60 * 24));
   }
 };

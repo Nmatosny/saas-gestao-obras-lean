@@ -4,10 +4,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  // Forçar recarregamento alterando a configuração
+  // O Next.js 16+ gerencia ESLint automaticamente ou via CLI separada.
+  // Removendo chaves depreciadas para garantir build limpo (P0).
   env: {
     RESTART_ID: "12345"
   }

@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from 'react'
 import {
   CheckCircle2, Clock, Calendar,
   Search, Folder, Layers,
-  Plus, X, AlertCircle, GripVertical, ShieldAlert
+  Plus, X, AlertCircle, GripVertical, ShieldAlert,
+  Rocket
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
@@ -34,11 +35,12 @@ type Props = {
   atividades: AtividadeKanban[]
   onUpdateTask: (id: string, data: Partial<AtividadeKanban>) => void
   onStatusChange: (id: string, newStatus: string) => void
+  onGoToProgramacao?: () => void // Adicionado para onboarding
 }
 
 // ─── Componente Principal ──────────────────────────────────────────────────────
 
-export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange }: Props) {
+export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange, onGoToProgramacao }: Props) {
   const [hasMounted, setHasMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterService, setFilterService] = useState('')
@@ -46,7 +48,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   const [selectedTask, setSelectedTask] = useState<AtividadeKanban | null>(null)
   const [impedimentoPendente, setImpedimentoPendente] = useState<{ id: string } | null>(null)
 
-  // Garanter que o DND só renderize no cliente para evitar erros de Hydration no Next.js 16
   useEffect(() => {
     setHasMounted(true)
   }, [])
@@ -88,6 +89,27 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
     </div>
   )
 
+  // ESTADO DE ONBOARDING: Se não há nada no Kanban
+  if (atividades.length === 0) {
+    return (
+      <div className="bg-white rounded-[3rem] p-20 border-2 border-dashed border-slate-200 text-center flex flex-col items-center">
+         <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mb-8">
+            <Rocket className="w-10 h-10" />
+         </div>
+         <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-3">Seu Kanban está aguardando programação</h3>
+         <p className="text-slate-500 font-medium max-w-sm mb-10 text-sm">
+           Para ver atividades aqui, você precisa primeiro selecioná-las no menu de **Programação**.
+         </p>
+         <button 
+           onClick={onGoToProgramacao}
+           className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-100 hover:scale-105 transition-all"
+         >
+           Ir para Programação
+         </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       {/* Filtros */}
@@ -113,9 +135,8 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
          </div>
       </div>
 
-      {/* Kanban Board */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {columns.map(col => (
             <div key={col.id} className="space-y-4">
               <div className="flex items-center justify-between px-4 mb-2">
@@ -130,7 +151,7 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                   <div 
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`space-y-4 min-h-[500px] p-4 rounded-[2.5rem] border border-dashed transition-colors ${
+                    className={`space-y-4 min-h-[600px] p-4 rounded-[2.5rem] border border-dashed transition-colors ${
                       snapshot.isDraggingOver ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/30 border-slate-100'
                     }`}
                   >
@@ -150,7 +171,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                               } ${a.isCritical ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-slate-200'}`}
                               onClick={() => setSelectedTask(a)}
                             >
-                              {/* Header do Card */}
                               <div className="flex items-start justify-between mb-4">
                                  <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
@@ -170,7 +190,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                  <GripVertical className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />
                                </div>
 
-                               {/* CNC Badge */}
                                {a.causaNaoCumprimento && isDelayed && (
                                  <div className="mb-4 bg-red-50 border border-red-100 p-2 rounded-xl flex items-center gap-2">
                                     <AlertCircle className="w-3 h-3 text-red-500" />
@@ -178,7 +197,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                  </div>
                                )}
 
-                              {/* Info Badge */}
                               <div className="flex items-center gap-3 mb-6">
                                  <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                                     <Folder className="w-4 h-4" />
@@ -189,7 +207,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                  </div>
                               </div>
 
-                              {/* Footer com Progresso */}
                               <div className="space-y-3">
                                  <div className="flex justify-between items-end">
                                     <div className="flex items-center gap-2">
@@ -200,8 +217,8 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                        </div>
                                        {a.restricoes && a.restricoes.filter(r => !r.resolvido).length > 0 && (
                                          <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                                            <AlertCircle className="w-3 h-3 text-amber-500" />
-                                            <span className="text-[9px] font-black text-amber-600">{a.restricoes.filter(r => !r.resolvido).length}</span>
+                                             <AlertCircle className="w-3 h-3 text-amber-500" />
+                                             <span className="text-[9px] font-black text-amber-600">{a.restricoes.filter(r => !r.resolvido).length}</span>
                                          </div>
                                        )}
                                     </div>
@@ -234,7 +251,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
         </div>
       </DragDropContext>
 
-      {/* Modal de Detalhes e CNC */}
       {selectedTask && (
         <DetalhesTarefaModal
           task={selectedTask}
@@ -243,7 +259,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
         />
       )}
 
-      {/* Modal de Impedimento */}
       {impedimentoPendente && (
         <ImpedimentoModal
           onConfirm={(causa, observacao) => {
@@ -261,8 +276,6 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
 const CAUSAS_CNC = [
   'Mão de Obra', 'Material', 'Equipamento', 'Clima', 'Projeto', 'Financeiro', 'Logística', 'Outros'
 ]
-
-// ─── Modal de Impedimento ─────────────────────────────────────────────────────
 
 function ImpedimentoModal({ onConfirm, onCancel }: { onConfirm: (causa: string, obs: string) => void; onCancel: () => void }) {
   const [causa, setCausa] = useState('')
@@ -324,9 +337,7 @@ function ImpedimentoModal({ onConfirm, onCancel }: { onConfirm: (causa: string, 
   )
 }
 
-// ─── Sub-Componente: Modal de Detalhes Completo ──────────────────────────────────────
-
-function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: AtividadeKanban; onClose: () => void; onUpdateTask: (id: string, d: any) => void }) {
+function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: AtividadeKanban; onClose: () => void; onUpdateTask: (id: string, d: Partial<AtividadeKanban>) => void }) {
   const [nova, setNova] = useState('')
   const [restricoes, setRestricoes] = useState<Restricao[]>([])
   const [causa, setCausa] = useState(task.causaNaoCumprimento || '')
@@ -370,7 +381,6 @@ function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: AtividadeK
           </div>
           
           <div className="p-8 space-y-10">
-             {/* Seção CNC */}
              <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                    <AlertCircle className="w-3 h-3 text-red-500" /> Causa de Não Cumprimento (CNC)
@@ -388,7 +398,6 @@ function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: AtividadeK
                 </div>
              </div>
 
-             {/* Seção Restrições */}
              <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                    <Layers className="w-3 h-3 text-blue-500" /> Restrições de Campo

@@ -94,6 +94,8 @@ model Atividade {
   baselineInicio  DateTime?
   baselineFim     DateTime?
   custoOrcado     Float       @default(0)
+  unidadeMedida   String?     @default("un")
+  quantidadeTotal Float       @default(100)
   
   obra            Obra        @relation(fields: [obraId], references: [id])
   obraId          String
@@ -157,6 +159,7 @@ model DiarioAtividade {
   atividade             Atividade @relation(fields: [atividadeId], references: [id])
   atividadeId           String
   progress              Float
+  quantidadeRealizada   Float     @default(0)
   status                String?
   quantidadeTrabalhadores Int     @default(0)
   fotosAtividade        String?   // JSON array of {url, caption}
