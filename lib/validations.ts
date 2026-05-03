@@ -23,16 +23,24 @@ export const atividadeSchema = z.object({
 });
 
 export const diarioSchema = z.object({
-  obraId: z.string(),
-  date: z.string(), // ISO string
-  weatherMorning: z.string().optional(),
-  weatherAfternoon: z.string().optional(),
-  weatherNight: z.string().optional(),
-  notes: z.string().optional(),
+  obraId: z.string().cuid("ID de obra inválido"),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Data inválida",
+  }),
+  weatherMorning: z.string().optional().nullable(),
+  weatherAfternoon: z.string().optional().nullable(),
+  weatherNight: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  efetivos: z.array(z.object({
+    role: z.string(),
+    count: z.number().min(0)
+  })).optional(),
   atividades: z.array(z.object({
     atividadeId: z.string(),
     progress: z.number().min(0).max(100),
+    quantidadeRealizada: z.number().min(0).optional().default(0),
     status: z.string(),
-    quantidadeTrabalhadores: z.number().optional(),
+    quantidadeTrabalhadores: z.number().optional().default(0),
+    fotosAtividade: z.array(z.string()).optional(),
   })).optional(),
 });

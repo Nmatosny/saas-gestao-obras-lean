@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { MetricsEngine } from '@/lib/metrics';
+import { ProjectCore } from '@/lib/domain/ProjectCore';
 import { getWorkspaceSession, unauthorizedResponse } from '@/lib/auth';
 import { obraSchema } from '@/lib/validations';
 
@@ -24,31 +24,14 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const today = new Date();
     const obrasComStats = obras.map(obra => {
       const { atividades, ...rest } = obra;
       
-      let totalWeight = 0;
-      let weightedReal = 0;
-      let weightedPlanned = 0;
+      const eva = ProjectCore.calculateEVA(atividades as any);
+      const totalWeight = eva.totalWeight || 1;
+      const avgReal = (eva.earnedValue * 100) / totalWeight;
+      const avgPlanned = (eva.plannedValue * 100) / totalWeight;
 
-      atividades.forEach(a => {
-        const weight = a.weight || 1;
-        totalWeight += weight;
-        
-        weightedReal += (a.progress * weight);
-        
-        const planned = MetricsEngine.calculatePlannedProgress(
-          new Date(a.startDate), 
-          new Date(a.endDate), 
-          today
-        );
-        weightedPlanned += (planned * weight);
-      });
-
-      const avgReal = totalWeight > 0 ? weightedReal / totalWeight : 0;
-      const avgPlanned = totalWeight > 0 ? weightedPlanned / totalWeight : 0;
-      
       return {
         ...rest,
         stats: {
@@ -56,7 +39,7 @@ export async function GET(request: Request) {
           progressoPlanejado: Math.round(avgPlanned),
           desvio: Number((avgReal - avgPlanned).toFixed(1)),
           totalAtividades: atividades.length,
-          status: MetricsEngine.determineStatus(avgReal, avgPlanned)
+          spi: eva.spi
         }
       };
     });

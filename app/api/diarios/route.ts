@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
+import { diarioSchema } from '@/lib/validations';
 
 export async function GET(request: Request) {
   try {
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
     const workspaceId = await getWorkspaceSession();
     if (!workspaceId) return unauthorizedResponse();
 
-    const body = await request.json();
+    const json = await request.json();
+    const body = diarioSchema.parse(json);
     const { 
       date, 
       weatherMorning, 
@@ -131,6 +133,22 @@ export async function POST(request: Request) {
           // Regra anti-regressão: progresso da atividade só avança, nunca recua.
           // Impede que um RDO com dado parcial distorça o histórico e os KPIs.
           const newProgress = Math.max(calculatedProgress, currentAtiv.progress);
+
+          // AUDIT LOG (P1 Hardening)
+          if (newProgress > currentAtiv.progress || qtyToday > 0) {
+            await tx.measurementAudit.create({
+              data: {
+                atividadeId: act.atividadeId,
+                obraId: obraId,
+                userId: (await prisma.user.findFirst({ where: { workspaceId } }))?.id || '', // Fallback para o dono do workspace
+                oldProgress: currentAtiv.progress,
+                newProgress: newProgress,
+                oldQuantity: currentAtiv.quantidadeRealizada,
+                newQuantity: (currentAtiv.quantidadeRealizada || 0) + qtyToday,
+                source: "RDO"
+              }
+            });
+          }
 
           const diarioAtividade = await tx.diarioAtividade.create({
             data: {

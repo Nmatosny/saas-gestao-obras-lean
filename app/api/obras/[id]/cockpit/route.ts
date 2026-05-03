@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { MetricsEngine } from '@/lib/metrics';
+import { ProjectCore } from '@/lib/domain/ProjectCore';
 import { gerarAlertas } from '@/lib/alertService';
-import { ReprogramacaoService } from '@/lib/services/ReprogramacaoService';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 /**
- * COCKPIT API (BFF - Backend for Frontend)
- * Consolida todos os dados da obra em um único payload otimizado.
+ * COCKPIT API (BFF)
+ * Versão Hardening 5.0 - Domain Driven
  */
 export async function GET(
   request: Request,
@@ -21,14 +20,12 @@ export async function GET(
     const isOwner = await validateObraOwnership(obraId, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
-    // Carregamento Atômico (Paralelo)
+    // 1. Carregamento Paralelo (Infra)
     const [obra, atividades, diarios, versoes, dependencias] = await Promise.all([
-      prisma.obra.findUnique({
-        where: { id: obraId }
-      }),
+      prisma.obra.findUnique({ where: { id: obraId } }),
       prisma.atividade.findMany({
         where: { obraId },
-        include: { service: true, location: true, restricoes: true },
+        include: { service: true, location: true },
         orderBy: { startDate: 'asc' }
       }),
       prisma.diario.findMany({
@@ -41,53 +38,21 @@ export async function GET(
         where: { obraId },
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.dependency.findMany({
-        where: { predecessor: { obraId } }
-      })
+      prisma.dependency.findMany({ where: { obraId } })
     ]);
 
-    if (!obra) {
-      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
-    }
+    if (!obra) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
-    // Processamento de Inteligência — isolado para não crashar o payload inteiro
-    let alerts: any[] = [];
-    try {
-      alerts = gerarAlertas(atividades as any, diarios as any);
-    } catch (e) {
-      console.warn('gerarAlertas falhou, ignorando alertas:', e);
-    }
+    // 2. Processamento via Camada de Domínio (Inteligência)
+    const eva = ProjectCore.calculateEVA(atividades as any);
+    const forecast = ProjectCore.calculateForecast(atividades as any);
+    const ppc = ProjectCore.calculatePPC(atividades as any);
+    const alerts = gerarAlertas(atividades as any, diarios as any);
 
-    // Cálculo de Estatísticas Consolidadas
-    const today = new Date();
-    let totalWeight = 0;
-    let weightedReal = 0;
-    let weightedPlanned = 0;
-
-    atividades.forEach(a => {
-      // Ignora atividades com datas inválidas para não gerar NaN
-      if (!a.startDate || !a.endDate) return;
-      const start = new Date(a.startDate);
-      const end = new Date(a.endDate);
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
-
-      const weight = a.weight || 1;
-      totalWeight += weight;
-      weightedReal += (a.progress * weight);
-
-      const planned = MetricsEngine.calculatePlannedProgress(start, end, today);
-      weightedPlanned += (planned * weight);
-    });
-
-    const avgReal = totalWeight > 0 ? weightedReal / totalWeight : 0;
-    const avgPlanned = totalWeight > 0 ? weightedPlanned / totalWeight : 0;
-
-    let projecao: any = { impactoTotalDias: 0, sugestaoTermino: null };
-    try {
-      projecao = ReprogramacaoService.simularImpactoAtraso(atividades, dependencias);
-    } catch (e) {
-      console.warn('ReprogramacaoService falhou, ignorando projeção:', e);
-    }
+    // 3. Consolidação de Estatísticas
+    const totalWeight = eva.totalWeight || 1;
+    const avgReal = (eva.earnedValue * 100) / totalWeight;
+    const avgPlanned = (eva.plannedValue * 100) / totalWeight;
 
     const cockpitData = {
       obra,
@@ -100,10 +65,10 @@ export async function GET(
         progresso: Math.round(avgReal),
         progressoPlanejado: Math.round(avgPlanned),
         desvio: Number((avgReal - avgPlanned).toFixed(1)),
-        status: MetricsEngine.determineStatus(avgReal, avgPlanned),
-        ppc: MetricsEngine.calculatePPC(atividades as any),
-        projecaoTermino: projecao.sugestaoTermino,
-        atrasoEstimadoDias: projecao.impactoTotalDias
+        ppc,
+        spi: eva.spi,
+        projecaoTermino: forecast.projectedEnd ? forecast.projectedEnd.toISOString().split('T')[0] : null,
+        atrasoEstimadoDias: forecast.impactDays
       },
       hasBaseline: versoes.length > 0
     };
@@ -112,8 +77,8 @@ export async function GET(
   } catch (error: any) {
     console.error('Erro no Cockpit API:', error);
     return NextResponse.json({ 
-      error: 'Erro ao consolidar cockpit', 
-      details: error.message
+      error: 'Erro crítico ao consolidar cockpit', 
+      details: error.message 
     }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
-// Este é o seu arquivo de esquema do Prisma.
-// Saiba mais sobre ele na documentação: https://pris.ly/d/prisma-schema
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -10,21 +10,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  image         String?
+  role          String    @default("USER")
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  measurements  MeasurementAudit[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+}
+
 model Workspace {
   id        String   @id @default(cuid())
   name      String
   users     User[]
   obras     Obra[]
   createdAt DateTime @default(now())
-}
-
-model User {
-  id          String      @id @default(cuid())
-  email       String      @unique
-  password    String      // Adicionado para NextAuth
-  name        String?
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
-  workspaceId String
 }
 
 model Obra {
@@ -34,47 +39,19 @@ model Obra {
   endereco    String?
   engenheiro  String?
   arquiteto   String?
-  status      String      @default("Em Andamento")
+  status      String      @default("planejada")
   progress    Float       @default(0)
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
   workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
   atividades  Atividade[]
   diarios     Diario[]
   locais      Location[]
   servicos    Service[]
   versoes     CronogramaVersao[]
+  measurements MeasurementAudit[]
   createdAt   DateTime    @default(now())
-}
 
-model CronogramaVersao {
-  id        String      @id @default(cuid())
-  nome      String
-  ativa     Boolean     @default(false)
-  obra      Obra        @relation(fields: [obraId], references: [id])
-  obraId    String
-  atividades Atividade[]
-  createdAt DateTime    @default(now())
-}
-
-model Location {
-  id         String      @id @default(cuid())
-  name       String
-  order      Int         @default(0)
-  obra       Obra        @relation(fields: [obraId], references: [id])
-  obraId     String
-  atividades Atividade[]
-}
-
-model Service {
-  id                   String               @id @default(cuid())
-  name                 String
-  color                String               @default("#94a3b8")
-  custoEstimado        Float                @default(0)
-  obra                 Obra                 @relation(fields: [obraId], references: [id])
-  obraId               String
-  atividades           Atividade[]
-  depsPredecessor      DependenciaServico[] @relation("Predecessor")
-  depsSucessor         DependenciaServico[] @relation("Sucessor")
+  @@index([workspaceId])
 }
 
 model Atividade {
@@ -82,55 +59,108 @@ model Atividade {
   name            String
   startDate       DateTime
   endDate         DateTime
-  cost            Float       @default(0)
-  weight          Float       @default(1)
-  progress        Float       @default(0)
-  plannedProgress Float       @default(0)
-  status          String      @default("programado") // programado, em_andamento, concluido
-  scheduled       Boolean     @default(false)
-  isCritical      Boolean     @default(false)
-  causaNaoCumprimento String?
-  impactoDescricao String?
   baselineInicio  DateTime?
   baselineFim     DateTime?
-  custoOrcado     Float       @default(0)
-  unidadeMedida   String?     @default("un")
-  quantidadeTotal Float       @default(100)
+  progress        Float       @default(0)
+  weight          Float       @default(1)
+  status          String      @default("planejado") // planejado, em_andamento, concluido, impedido
+  isCritical      Boolean     @default(false)
   
-  obra            Obra        @relation(fields: [obraId], references: [id])
-  obraId          String
-  location        Location    @relation(fields: [locationId], references: [id])
-  locationId      String
-  service         Service     @relation(fields: [serviceId], references: [id])
+  // Medição Acumulada
+  quantidadeTotal Float?
+  unidadeMedida   String?
+  quantidadeRealizada Float   @default(0)
+
+  causaNaoCumprimento String?
+  impactoDescricao    String?
+  
+  // Financeiro / ERP Integration
+  budgetedCost        Float       @default(0)
+  actualCost          Float       @default(0)
+  externalId          String?     // Chave de integração com ERP
+  
   serviceId       String
-  versao          CronogramaVersao? @relation(fields: [versaoId], references: [id])
-  versaoId        String?
+  service         Service     @relation(fields: [serviceId], references: [id])
+  locationId      String
+  location        Location    @relation(fields: [locationId], references: [id])
+  obraId          String
+  obra            Obra        @relation(fields: [obraId], references: [id])
   
-  dependencies    Dependency[] @relation("DependencyOf")
-  requiredBy      Dependency[] @relation("RequiredBy")
+  predecessors    Dependency[] @relation("PredecessorAtiv")
+  sucessors       Dependency[] @relation("SucessorAtiv")
+  
   diarioAtivs     DiarioAtividade[]
-  restricoes      Restricao[] // PONTO 1 - ADICIONADO
+  restricoes      Restricao[]
+  measurements    MeasurementAudit[]
   createdAt       DateTime    @default(now())
+
+  @@index([obraId])
+  @@index([serviceId])
+  @@index([locationId])
 }
 
-// PONTO 1 - MODELO RESTRIÇÃO ADICIONADO
-model Restricao {
-  id          String    @id @default(cuid())
-  descricao   String
-  resolvido   Boolean   @default(false)
-  atividade   Atividade @relation(fields: [atividadeId], references: [id])
-  atividadeId String
-  createdAt   DateTime  @default(now())
+model Location {
+  id          String      @id @default(cuid())
+  name        String
+  obraId      String
+  obra        Obra        @relation(fields: [obraId], references: [id])
+  atividades  Atividade[]
+
+  @@index([obraId])
+}
+
+model Service {
+  id             String      @id @default(cuid())
+  name           String
+  color          String      @default("#000000")
+  custoEstimado  Float?
+  obraId         String
+  obra           Obra        @relation(fields: [obraId], references: [id])
+  atividades     Atividade[]
+  predecessores  DependenciaServico[] @relation("Sucessor")
+  sucessores     DependenciaServico[] @relation("Predecessor")
+
+  @@index([obraId])
 }
 
 model Dependency {
   id              String    @id @default(cuid())
-  predecessor     Atividade @relation("DependencyOf", fields: [predecessorId], references: [id])
+  obraId          String
   predecessorId   String
-  successor       Atividade @relation("RequiredBy", fields: [successorId], references: [id])
-  successorId     String
+  sucessorId      String
   type            String    @default("FS") // FS, SS, FF, SF
   lag             Int       @default(0)
+  
+  predecessor     Atividade @relation("PredecessorAtiv", fields: [predecessorId], references: [id])
+  sucessor        Atividade @relation("SucessorAtiv", fields: [sucessorId], references: [id])
+
+  @@index([obraId])
+  @@index([predecessorId])
+  @@index([sucessorId])
+}
+
+model Restricao {
+  id          String    @id @default(cuid())
+  descricao   String
+  status      String    @default("aberta") // aberta, resolvida
+  dataResolucao DateTime?
+  atividadeId String
+  atividade   Atividade @relation(fields: [atividadeId], references: [id])
+
+  @@index([atividadeId])
+}
+
+model CronogramaVersao {
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?
+  data        DateTime @default(now())
+  obraId      String
+  obra        Obra     @relation(fields: [obraId], references: [id])
+  snapshot    String?  
+  createdAt   DateTime @default(now())
+
+  @@index([obraId])
 }
 
 model Diario {
@@ -149,7 +179,8 @@ model Diario {
   fotos            Foto[]
   createdAt        DateTime          @default(now())
 
-  @@unique([obraId, date]) // PONTO 9 - IMPEDIR DUPLICATAS
+  @@unique([obraId, date])
+  @@index([obraId])
 }
 
 model DiarioAtividade {
@@ -164,6 +195,9 @@ model DiarioAtividade {
   quantidadeTrabalhadores Int     @default(0)
   fotosAtividade        String?   // JSON array of {url, caption}
   apontamentos          Apontamento[]
+
+  @@index([diarioId])
+  @@index([atividadeId])
 }
 
 model Efetivo {
@@ -173,6 +207,8 @@ model Efetivo {
   diario       Diario        @relation(fields: [diarioId], references: [id])
   diarioId     String
   apontamentos Apontamento[]
+
+  @@index([diarioId])
 }
 
 model Apontamento {
@@ -181,6 +217,9 @@ model Apontamento {
   efetivoId         String
   diarioAtividade   DiarioAtividade @relation(fields: [diarioAtividadeId], references: [id])
   diarioAtividadeId String
+
+  @@index([efetivoId])
+  @@index([diarioAtividadeId])
 }
 
 model DependenciaServico {
@@ -192,6 +231,8 @@ model DependenciaServico {
 
   servicoPredecessor   Service @relation("Predecessor", fields: [servicoPredecessorId], references: [id])
   servicoSucessor      Service @relation("Sucessor", fields: [servicoSucessorId], references: [id])
+
+  @@index([obraId])
 }
 
 model Foto {
@@ -201,4 +242,27 @@ model Foto {
   diario    Diario   @relation(fields: [diarioId], references: [id])
   diarioId  String
   createdAt DateTime @default(now())
+
+  @@index([diarioId])
+}
+
+model MeasurementAudit {
+  id              String    @id @default(cuid())
+  atividadeId     String
+  obraId          String
+  userId          String
+  oldProgress     Float
+  newProgress     Float
+  oldQuantity     Float?
+  newQuantity     Float?
+  source          String    @default("RDO") // RDO, MANUAL, API
+  createdAt       DateTime  @default(now())
+
+  atividade       Atividade @relation(fields: [atividadeId], references: [id], onDelete: Cascade)
+  obra            Obra      @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([obraId])
+  @@index([atividadeId])
+  @@index([userId])
 }
