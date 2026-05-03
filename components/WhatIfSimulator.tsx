@@ -60,14 +60,24 @@ const CENARIOS_PRESET: Cenario[] = [
   },
 ]
 
+function safeTs(val: string | null | undefined): number | null {
+  if (!val) return null
+  const t = new Date(val).getTime()
+  return isNaN(t) ? null : t
+}
+
 function calcularResultado(atividades: Atividade[], cenario: Cenario): ResultadoCenario | null {
   if (atividades.length === 0) return null
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const endObra = new Date(Math.max(...atividades.map(a => new Date(a.endDate).getTime())))
-  const startObra = new Date(Math.min(...atividades.map(a => new Date(a.startDate).getTime())))
+  const endTimestamps = atividades.map(a => safeTs(a.endDate)).filter((t): t is number => t !== null)
+  const startTimestamps = atividades.map(a => safeTs(a.startDate)).filter((t): t is number => t !== null)
+  if (endTimestamps.length === 0 || startTimestamps.length === 0) return null
+
+  const endObra = new Date(Math.max(...endTimestamps))
+  const startObra = new Date(Math.min(...startTimestamps))
 
   const totalWeight = atividades.reduce((s, a) => s + (a.weight || 1), 0)
   const currentProgress = atividades.reduce((s, a) => s + (a.progress * (a.weight || 1)), 0) / totalWeight

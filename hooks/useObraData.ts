@@ -40,23 +40,47 @@ export function useObraData(obraId: string) {
 
       clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const data = await res.json();
-        setObra(data.obra);
-        setAtividades(data.atividades);
-        setDiarios(data.diarios);
-        setVersoes(data.versoes);
-        setDependencias(data.dependencias);
-        setAlerts(data.alerts);
-        setStats(data.stats);
-        setHasBaseline(data.hasBaseline);
-      } else {
+      // Tenta parsear o JSON independente do status HTTP
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // JSON inválido — erro real de rede/servidor
         setError(true);
+        setLoading(false);
+        return;
       }
-      
+
+      if (res.status === 401 || res.status === 403) {
+        // Auth error — redireciona para login em vez de tela de erro genérica
+        window.location.href = '/api/auth/signin';
+        return;
+      }
+
+      if (!res.ok || !data?.obra) {
+        // 404 ou 500 sem payload utilizável
+        console.error('Cockpit API retornou erro:', data?.error, data?.details);
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      // Hidrata com fallbacks defensivos para cada campo opcional
+      setObra(data.obra);
+      setAtividades(Array.isArray(data.atividades) ? data.atividades : []);
+      setDiarios(Array.isArray(data.diarios) ? data.diarios : []);
+      setVersoes(Array.isArray(data.versoes) ? data.versoes : []);
+      setDependencias(Array.isArray(data.dependencias) ? data.dependencias : []);
+      setAlerts(Array.isArray(data.alerts) ? data.alerts : []);
+      setStats(data.stats ?? null);
+      setHasBaseline(data.hasBaseline === true);
       setLoading(false);
-    } catch (err) {
-      console.error('Erro ao carregar cockpit:', err);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        console.warn('Cockpit API timeout');
+      } else {
+        console.error('Erro ao carregar cockpit:', err);
+      }
       setError(true);
       setLoading(false);
     }

@@ -28,6 +28,8 @@ export const ReprogramacaoService = {
     });
 
     // 3. Projetar nova data de término da obra baseada na maior data de fim atual + impacto
+    if (atividades.length === 0) return { impactoTotalDias: 0, sugestaoTermino: null };
+    
     const ultimaDataOriginal = new Date(Math.max(...atividades.map(a => new Date(a.endDate).getTime())));
     const sugestaoTermino = new Date(ultimaDataOriginal.getTime() + (impactoTotalDias * 1000 * 60 * 60 * 24));
 

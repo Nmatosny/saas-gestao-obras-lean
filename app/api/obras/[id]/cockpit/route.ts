@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { MetricsEngine } from '@/lib/metrics';
-import { AlertService } from '@/lib/services/AlertService';
+import { gerarAlertas } from '@/lib/alertService';
 import { ReprogramacaoService } from '@/lib/services/ReprogramacaoService';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 /**
  * COCKPIT API (BFF - Backend for Frontend)
  * Consolida todos os dados da obra em um único payload otimizado.
- * Resolve o problema de race conditions e desincronização entre abas (P1).
  */
 export async function GET(
   request: Request,
@@ -19,7 +18,6 @@ export async function GET(
     const workspaceId = await getWorkspaceSession();
     if (!workspaceId) return unauthorizedResponse();
 
-    // Validação de Tenant Guard
     const isOwner = await validateObraOwnership(obraId, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
@@ -35,10 +33,11 @@ export async function GET(
       }),
       prisma.diario.findMany({
         where: { obraId },
+        include: { atividades: true },
         orderBy: { date: 'desc' },
-        take: 30 // Últimos 30 dias para o cockpit
+        take: 30
       }),
-      prisma.versaoCronograma.findMany({
+      prisma.cronogramaVersao.findMany({
         where: { obraId },
         orderBy: { createdAt: 'desc' }
       }),
@@ -51,8 +50,13 @@ export async function GET(
       return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
     }
 
-    // Processamento de Inteligência (Alertas Prescritivos)
-    const alerts = AlertService.generatePrescriptiveAlerts(atividades as any);
+    // Processamento de Inteligência — isolado para não crashar o payload inteiro
+    let alerts: any[] = [];
+    try {
+      alerts = gerarAlertas(atividades as any, diarios as any);
+    } catch (e) {
+      console.warn('gerarAlertas falhou, ignorando alertas:', e);
+    }
 
     // Cálculo de Estatísticas Consolidadas
     const today = new Date();
@@ -61,23 +65,29 @@ export async function GET(
     let weightedPlanned = 0;
 
     atividades.forEach(a => {
+      // Ignora atividades com datas inválidas para não gerar NaN
+      if (!a.startDate || !a.endDate) return;
+      const start = new Date(a.startDate);
+      const end = new Date(a.endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+
       const weight = a.weight || 1;
       totalWeight += weight;
       weightedReal += (a.progress * weight);
-      
-      const planned = MetricsEngine.calculatePlannedProgress(
-        new Date(a.startDate), 
-        new Date(a.endDate), 
-        today
-      );
+
+      const planned = MetricsEngine.calculatePlannedProgress(start, end, today);
       weightedPlanned += (planned * weight);
     });
 
     const avgReal = totalWeight > 0 ? weightedReal / totalWeight : 0;
     const avgPlanned = totalWeight > 0 ? weightedPlanned / totalWeight : 0;
 
-    // Cálculo de Projeção Real de Término
-    const projecao = ReprogramacaoService.simularImpactoAtraso(atividades, dependencias);
+    let projecao: any = { impactoTotalDias: 0, sugestaoTermino: null };
+    try {
+      projecao = ReprogramacaoService.simularImpactoAtraso(atividades, dependencias);
+    } catch (e) {
+      console.warn('ReprogramacaoService falhou, ignorando projeção:', e);
+    }
 
     const cockpitData = {
       obra,
@@ -99,8 +109,11 @@ export async function GET(
     };
 
     return NextResponse.json(cockpitData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro no Cockpit API:', error);
-    return NextResponse.json({ error: 'Erro ao consolidar cockpit' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Erro ao consolidar cockpit', 
+      details: error.message
+    }, { status: 500 });
   }
 }

@@ -144,17 +144,32 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
 
   const stats = useMemo(() => {
     if (atividades.length === 0) return null
-    const totalWeight = atividades.reduce((acc, a) => acc + (a.weight || 1), 0)
-    const currentProgress = atividades.reduce((acc, a) => acc + (a.progress * (a.weight || 1)), 0) / totalWeight
-    const plannedProgress = atividades.reduce((acc, a) => acc + ((a.plannedProgress || 0) * (a.weight || 1)), 0) / totalWeight
     const today = new Date()
-    const endObra = new Date(Math.max(...atividades.map(a => new Date(a.endDate).getTime())))
-    const diasRestantes = Math.max(0, Math.round((endObra.getTime() - today.getTime()) / 86400000))
+
+    // Filtra atividades com datas válidas para evitar Invalid Date / NaN
+    const valid = atividades.filter(a => {
+      const e = a.endDate ? new Date(a.endDate) : null
+      return e && !isNaN(e.getTime())
+    })
+
+    const totalWeight = atividades.reduce((acc, a) => acc + (a.weight || 1), 0)
+    const currentProgress = totalWeight > 0
+      ? atividades.reduce((acc, a) => acc + ((a.progress || 0) * (a.weight || 1)), 0) / totalWeight
+      : 0
+    const plannedProgress = totalWeight > 0
+      ? atividades.reduce((acc, a) => acc + ((a.plannedProgress || 0) * (a.weight || 1)), 0) / totalWeight
+      : 0
+
+    const endTimestamps = valid.map(a => new Date(a.endDate).getTime())
+    const endObra = endTimestamps.length > 0 ? new Date(Math.max(...endTimestamps)) : null
+    const diasRestantes = endObra ? Math.max(0, Math.round((endObra.getTime() - today.getTime()) / 86400000)) : 0
+
     const ativsImpedidas = atividades.filter(a => a.status === 'impedido').length
-    const ativsDeveriamEstarProntas = atividades.filter(a => new Date(a.endDate) < today).length
-    const ativsProntas = atividades.filter(a => a.progress >= 100).length
+    const ativsDeveriamEstarProntas = valid.filter(a => new Date(a.endDate) < today).length
+    const ativsProntas = atividades.filter(a => (a.progress || 0) >= 100).length
     const ppc = ativsDeveriamEstarProntas > 0 ? Math.round((ativsProntas / ativsDeveriamEstarProntas) * 100) : 100
     const desvio = Math.round(currentProgress - plannedProgress)
+
     return {
       currentProgress: Math.round(currentProgress),
       plannedProgress: Math.round(plannedProgress),

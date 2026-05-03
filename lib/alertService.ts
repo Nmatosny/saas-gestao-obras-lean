@@ -41,6 +41,12 @@ type FinanceiroData = {
   bac?: number
 }
 
+function safeDate(val: string | null | undefined): Date | null {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function gerarAlertas(
   atividades: Atividade[],
   diarios: Diario[] = [],
@@ -52,12 +58,13 @@ export function gerarAlertas(
 
   // 1. Atividades atrasadas (passou do prazo, não concluída)
   const atrasadas = atividades.filter(a => {
-    const fim = new Date(a.endDate)
-    return fim < today && a.progress < 100 && a.status !== 'concluido'
+    const fim = safeDate(a.endDate)
+    return fim && fim < today && a.progress < 100 && a.status !== 'concluido'
   })
   if (atrasadas.length > 0) {
     const top = atrasadas.sort((a, b) => (b.weight || 1) - (a.weight || 1))[0]
-    const diasAtraso = Math.round((today.getTime() - new Date(top.endDate).getTime()) / 86400000)
+    const topEnd = safeDate(top.endDate)
+    const diasAtraso = topEnd ? Math.round((today.getTime() - topEnd.getTime()) / 86400000) : 0
     alerts.push({
       id: 'atrasadas',
       severity: atrasadas.length >= 3 ? 'critico' : 'atencao',
@@ -101,15 +108,18 @@ export function gerarAlertas(
   }
 
   // 4. Sem RDO nos últimos 3 dias úteis
-  const ultimoDiario = diarios.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+  const ultimoDiario = diarios
+    .filter(d => safeDate(d.date) !== null)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
   if (ultimoDiario) {
-    const diasSemDiario = Math.round((today.getTime() - new Date(ultimoDiario.date).getTime()) / 86400000)
+    const diarDate = safeDate(ultimoDiario.date)!
+    const diasSemDiario = Math.round((today.getTime() - diarDate.getTime()) / 86400000)
     if (diasSemDiario >= 3) {
       alerts.push({
         id: 'sem_rdo',
         severity: 'atencao',
         title: `${diasSemDiario} dias sem RDO`,
-        message: `O último diário foi registrado em ${new Date(ultimoDiario.date).toLocaleDateString('pt-BR')}. A falta de registros compromete a rastreabilidade e o cálculo do PPC.`,
+        message: `O último diário foi registrado em ${diarDate.toLocaleDateString('pt-BR')}. A falta de registros compromete a rastreabilidade e o cálculo do PPC.`,
         action: 'Abrir RDO',
         actionTab: 'campo',
       })
