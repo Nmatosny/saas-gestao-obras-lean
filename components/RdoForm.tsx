@@ -129,6 +129,8 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
     }))
   }
 
+  const [showSuccess, setShowSuccess] = useState(false)
+
   const climaImprodutivo = climaManha === 'chuva_intensa' || climaTarde === 'chuva_intensa' ||
     (climaManha === 'chuvoso' && climaTarde === 'chuvoso')
 
@@ -160,12 +162,38 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
         body: JSON.stringify(payload),
       })
       if (res.ok) {
-        onSalvo(await res.json())
-        setEfetivos([]); setOcorrencias([]); setEquipamentos([])
+        const novoDiario = await res.json()
+        setShowSuccess(true)
+        setTimeout(() => {
+          onSalvo(novoDiario)
+          setEfetivos([]); setOcorrencias([]); setEquipamentos([])
+        }, 2000)
       }
     } finally {
       setSalvando(false)
     }
+  }
+
+  if (showSuccess) {
+    return (
+      <div className="bg-white p-20 rounded-[3rem] border border-emerald-100 shadow-2xl text-center animate-in zoom-in-95 duration-500">
+        <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+          <CheckCircle className="w-12 h-12" />
+        </div>
+        <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">RDO Publicado com Sucesso!</h2>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-8">O cronograma e os indicadores foram atualizados em tempo real.</p>
+        <div className="flex gap-4 justify-center">
+          <div className="px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100">
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Data</p>
+            <p className="text-sm font-black text-slate-700">{data.split('-').reverse().join('/')}</p>
+          </div>
+          <div className="px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100">
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Avanços</p>
+            <p className="text-sm font-black text-slate-700">{Object.keys(avancos).length} Itens</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

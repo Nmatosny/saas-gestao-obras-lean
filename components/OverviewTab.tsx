@@ -16,7 +16,7 @@ interface OverviewTabProps {
   atividades: Atividade[]
   diarios: Diario[]
   obra: Obra
-  onSetAba: (aba: string) => void
+  onSetAba: (aba: string, subAba?: string) => void
 }
 
 function SeverityDot({ severity }: { severity: string }) {
@@ -185,22 +185,61 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
 
   if (atividades.length === 0) {
     return (
-      <div className="bg-white rounded-[3rem] p-20 border-2 border-dashed border-slate-200 text-center animate-in fade-in zoom-in-95 duration-700">
-        <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8">
-          <Zap className="w-12 h-12" />
-        </div>
-        <h3 className="text-3xl font-black text-slate-800 tracking-tight mb-4">Bem-vindo à sua nova Obra!</h3>
-        <p className="text-slate-500 font-medium max-w-md mx-auto mb-10 text-lg">
-          Para começar a gerar inteligência de dados, precisamos do seu cronograma planejado.
-        </p>
-        <div className="flex justify-center gap-4">
-          <button onClick={() => onSetAba('planejamento')} className="bg-blue-600 text-white px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-blue-100 hover:scale-105 transition-all">
-            Importar Cronograma
-          </button>
+      <div className="bg-white rounded-[3rem] p-16 border border-slate-100 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-700 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full blur-[80px] -mr-32 -mt-32" />
+        <div className="relative z-10">
+          <div className="w-24 h-24 bg-blue-600 text-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-200">
+            <Zap className="w-12 h-12" />
+          </div>
+          <h3 className="text-4xl font-black text-slate-900 tracking-tight mb-4 italic">Obra Iniciada com Sucesso!</h3>
+          <p className="text-slate-500 font-bold max-w-lg mx-auto mb-12 text-lg uppercase tracking-tight leading-relaxed">
+            O próximo passo crítico para ativar a inteligência de dados é a <span className="text-blue-600">Importação do Cronograma</span>.
+          </p>
+          
+          <div className="flex flex-col items-center gap-6">
+            <button 
+              onClick={() => onSetAba('planejamento')} 
+              className="group bg-slate-900 text-white px-12 py-6 rounded-[2.5rem] font-black uppercase tracking-[0.15em] text-sm shadow-2xl hover:bg-blue-600 transition-all flex items-center gap-3"
+            >
+              Iniciar Configuração <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+            </button>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Suportamos MS Project (XML) e Excel (.xlsx)</p>
+          </div>
         </div>
       </div>
     )
   }
+
+  // Lógica de "Próxima Melhor Ação" baseada no estado real
+  const nextAction = useMemo(() => {
+    if (atividades.length > 0 && !atividades.some(a => a.locationId)) {
+      return { 
+        title: 'Vincular Locais', 
+        desc: 'Sua estrutura de locais está vazia. Vincule atividades para habilitar a Linha de Balanço.',
+        label: 'Ir para Estrutura',
+        tab: 'planejamento',
+        subAba: 'locais'
+      }
+    }
+    if (ativsProgramadas.length === 0) {
+      return {
+        title: 'Programar Semana',
+        desc: 'Nenhuma atividade programada. Defina o foco da equipe para os próximos 7 dias.',
+        label: 'Abrir Programação',
+        tab: 'campo',
+        subAba: 'programacao'
+      }
+    }
+    if (diarios.length === 0) {
+      return {
+        title: 'Primeiro RDO',
+        desc: 'A execução começou! Registre o primeiro Diário de Obra para iniciar a Curva S.',
+        label: 'Novo Diário',
+        tab: 'gestao'
+      }
+    }
+    return null
+  }, [atividades, ativsProgramadas, diarios])
 
   const critCount = alerts.filter(a => a.severity === 'critico').length
 
@@ -248,6 +287,27 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
               </div>
             </div>
 
+            {/* Next Best Action Card (The Journey Driver) */}
+            {nextAction && (
+              <div className="mb-8 p-6 bg-blue-600 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-blue-900/50 border border-blue-400/30 animate-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-black text-sm uppercase tracking-tight">{nextAction.title}</h4>
+                    <p className="text-blue-100 text-[11px] font-medium max-w-sm">{nextAction.desc}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => onSetAba(nextAction.tab, nextAction.subAba)}
+                  className="bg-white text-blue-600 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                >
+                  {nextAction.label}
+                </button>
+              </div>
+            )}
+
             {/* KPI strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <PulsingStatus
@@ -266,31 +326,19 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
                 color={stats && stats.ativsImpedidas > 0 ? 'text-amber-400' : 'text-slate-500'}
               />
               <PulsingStatus
-                label="Dias Restantes"
-                value={stats?.diasRestantes ?? '—'}
-                color="text-slate-500"
+                label="Confiança (PPC)"
+                value={`${stats?.ppc ?? 100}%`}
+                color={stats && stats.ppc < 75 ? 'text-red-400' : 'text-slate-500'}
               />
             </div>
 
             {/* Progress bars */}
             <div className="space-y-3 border-t border-white/10 pt-8">
-              <HealthBar label="Progresso Real" value={stats?.currentProgress ?? 0} color="bg-blue-500" />
-              <HealthBar label="Meta Planejada" value={stats?.plannedProgress ?? 0} color="bg-slate-500" />
-              <HealthBar label="PPC (Confiabilidade)" value={stats?.ppc ?? 100} color={stats && stats.ppc < 70 ? 'bg-red-500' : stats && stats.ppc < 85 ? 'bg-amber-500' : 'bg-emerald-500'} />
+              <HealthBar label="Execução Física" value={stats?.currentProgress ?? 0} color="bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+              <HealthBar label="Meta Planejada" value={stats?.plannedProgress ?? 0} color="bg-white/20" />
             </div>
-
-            {/* CTA strip */}
-            <div className="mt-8 flex gap-3 flex-wrap">
-              <button onClick={() => onSetAba('campo')} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Apontar Produção
-              </button>
-              <button onClick={() => onSetAba('gestao')} className="bg-white/10 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center gap-2">
-                <Calendar className="w-4 h-4" /> Ver Diários
-              </button>
-              <button onClick={() => onSetAba('planejamento')} className="bg-white/10 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center gap-2">
-                <Activity className="w-4 h-4" /> Linha de Balanço
-              </button>
-            </div>
+          </div>
+        </div>
           </div>
         </div>
 

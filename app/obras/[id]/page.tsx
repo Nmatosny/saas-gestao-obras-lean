@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use, useCallback } from 'react'
+import { useState, use, useCallback, useMemo } from 'react'
 import {
   Layers, TrendingUp, FileCheck, Rocket,
   Share2, FileText, AlertCircle, Package,
@@ -49,7 +49,6 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     try {
       await navigator.clipboard.writeText(url)
     } catch {
-      // Fallback para browsers sem permissão de clipboard
       const el = document.createElement('textarea')
       el.value = url
       el.style.position = 'fixed'
@@ -63,7 +62,6 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     setTimeout(() => setShareFeedback(false), 2500)
   }, [])
 
-  // PDF Flash: dispara impressão nativa do browser
   const handlePrint = useCallback(() => {
     window.print()
   }, [])
@@ -90,6 +88,12 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     await fetch(`/api/obras/${obraId}/baseline`, { method: 'POST' })
     refresh()
   }, [obraId, refresh])
+
+  const handleImported = useCallback(() => {
+    refresh()
+    setAba('planejamento')
+    setSubAba('gantt')
+  }, [refresh])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -118,23 +122,28 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     </div>
   )
 
-  // Atividades derivadas — declaradas uma vez, usadas em múltiplas tabs
   const ativsProgramadas = atividades.filter(a => a.scheduled)
   const ativsEmAndamento = atividades.filter(
     a => a.status === 'em_andamento' || a.status === 'programado'
   )
 
   const steps = [
-    { label: 'Cronograma', done: atividades.length > 0, info: 'Importe o plano mestre.' },
-    { label: 'Programação', done: ativsProgramadas.length > 0, info: 'Defina as tarefas da semana.' },
-    { label: 'Controle (RDO)', done: diarios.length > 0, info: 'Registre o avanço de campo.' },
-    { label: 'Análise', done: diarios.length >= 5, info: 'Veja desvios e projeções.' },
+    { label: '1. Cronograma', done: atividades.length > 0, info: 'Importe o plano mestre (XML/Excel).' },
+    { label: '2. Estrutura', done: atividades.some(a => a.locationId), info: 'Valide locais e dependências.' },
+    { label: '3. Execução', done: ativsProgramadas.length > 0, info: 'Inicie a programação semanal.' },
+    { label: '4. Controle', done: diarios.length > 0, info: 'Registre os avanços diários.' },
   ]
+
   const currentStepIdx = steps.findIndex(s => !s.done)
   const progressPercent = Math.round((steps.filter(s => s.done).length / steps.length) * 100)
   const currentStep = currentStepIdx !== -1
     ? steps[currentStepIdx]
     : { label: 'Setup Concluído', info: 'A inteligência de dados está ativa.' }
+
+  const handleSetAba = useCallback((novaAba: string, novaSubAba?: string) => {
+    setAba(novaAba)
+    if (novaSubAba) setSubAba(novaSubAba)
+  }, [])
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-slate-50/30 space-y-10 pb-32">
@@ -146,22 +155,22 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
         stepIndex={currentStepIdx}
       />
 
-      {/* Navegação */}
+      {/* Navegação Operacional (The Golden Path) */}
       <div className="flex flex-col md:flex-row gap-4 mb-10 no-print relative z-20">
-        <div className="bg-slate-200/40 p-1 rounded-2xl flex gap-1 border border-slate-200/60 overflow-x-auto flex-1">
+        <div className="bg-slate-200/40 p-1.5 rounded-[1.5rem] flex gap-1 border border-slate-200/60 overflow-x-auto flex-1 shadow-inner">
           {[
-            { id: 'overview',      name: 'Resumo',        icon: <LayoutDashboard className="w-4 h-4" /> },
-            { id: 'planejamento',  name: 'Planejamento',  icon: <Layers className="w-4 h-4" /> },
-            { id: 'campo',         name: 'Produção',      icon: <Package className="w-4 h-4" /> },
-            { id: 'gestao',        name: 'Medição',       icon: <TrendingUp className="w-4 h-4" /> },
-            { id: 'controladoria', name: 'Controladoria', icon: <FileCheck className="w-4 h-4" /> },
+            { id: 'overview',      name: 'Painel Geral',  icon: <LayoutDashboard className="w-4 h-4" /> },
+            { id: 'planejamento',  name: '1. Planejar',   icon: <Layers className="w-4 h-4" /> },
+            { id: 'campo',         name: '2. Executar',   icon: <Package className="w-4 h-4" /> },
+            { id: 'gestao',        name: '3. Medir (RDO)', icon: <TrendingUp className="w-4 h-4" /> },
+            { id: 'controladoria', name: '4. Analisar',   icon: <FileCheck className="w-4 h-4" /> },
             { id: 'relatorio',     name: 'Executivo',     icon: <Rocket className="w-4 h-4" /> },
           ].map(t => (
             <button
               key={t.id}
-              onClick={() => setAba(t.id)}
-              className={`px-6 py-3 rounded-xl text-[11px] font-black transition-all flex items-center gap-2 uppercase tracking-tight shrink-0 ${
-                aba === t.id ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'
+              onClick={() => handleSetAba(t.id)}
+              className={`px-6 py-3.5 rounded-2xl text-[11px] font-black transition-all flex items-center gap-2 uppercase tracking-tight shrink-0 ${
+                aba === t.id ? 'bg-white text-blue-600 shadow-lg ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'
               }`}
             >
               {t.icon} {t.name}
@@ -169,24 +178,24 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
           ))}
         </div>
 
-        <div className="flex gap-3 shrink-0">
+        <div className="flex gap-2 shrink-0 bg-white/50 p-1.5 rounded-[1.5rem] border border-slate-200/40">
           <button
             onClick={handleShare}
-            className={`border px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm ${
+            title="Compartilhar Link"
+            className={`w-12 h-12 rounded-xl transition-all flex items-center justify-center border ${
               shareFeedback
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'
             }`}
           >
-            {shareFeedback
-              ? <><Check className="w-3.5 h-3.5" /> Copiado!</>
-              : <><Share2 className="w-3.5 h-3.5" /> Compartilhar</>}
+            {shareFeedback ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
           </button>
           <button
             onClick={handlePrint}
-            className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10"
+            title="Imprimir Relatório"
+            className="w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-300 rounded-xl transition-all flex items-center justify-center"
           >
-            <FileText className="w-3.5 h-3.5" /> PDF Flash
+            <FileText className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -198,7 +207,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
             atividades={atividades}
             diarios={diarios}
             obra={obra}
-            onSetAba={setAba}
+            onSetAba={handleSetAba}
           />
         )}
 
@@ -342,7 +351,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
         <ObraImportModal
           obraId={obraId}
           onClose={() => setShowImport(false)}
-          onImported={refresh}
+          onImported={handleImported}
         />
       )}
     </div>
