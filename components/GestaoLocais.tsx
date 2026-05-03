@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   MapPin, Plus, Trash2, GripVertical, Layers, Zap,
   ChevronDown, ChevronUp, AlertCircle, Check, X, Hash
@@ -66,9 +66,7 @@ export default function GestaoLocais({ obraId, onLocaisChange }: Props) {
   const [fluxoCriando, setFluxoCriando] = useState(false)
   const [fluxoSucesso, setFluxoSucesso] = useState(false)
 
-  useEffect(() => { carregar() }, [obraId])
-
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setLoading(true)
     const [locRes, svcRes] = await Promise.all([
       fetch(`/api/locations?obraId=${obraId}`),
@@ -77,7 +75,14 @@ export default function GestaoLocais({ obraId, onLocaisChange }: Props) {
     if (locRes.ok) setLocations(await locRes.json())
     if (svcRes.ok) setServices(await svcRes.json())
     setLoading(false)
-  }
+  }, [obraId])
+
+  useEffect(() => {
+    const init = async () => {
+      await carregar()
+    }
+    init()
+  }, [carregar])
 
   async function criarLocal(e: React.FormEvent) {
     e.preventDefault()
@@ -617,7 +622,7 @@ export default function GestaoLocais({ obraId, onLocaisChange }: Props) {
                     </button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
-                    {locations.map((loc, idx) => (
+                    {locations.map((loc, _idx) => (
                       <button
                         key={loc.id} type="button"
                         onClick={() => toggleFluxoLoc(loc.id)}

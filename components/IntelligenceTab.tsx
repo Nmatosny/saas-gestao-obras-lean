@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { 
   TrendingUp, TrendingDown, Zap, Target, Calendar, 
-  CheckCircle2, AlertTriangle, Clock, Users, Coffee
+  AlertTriangle, Clock, Users, Coffee
 } from 'lucide-react'
 
 type Atividade = {
@@ -137,7 +137,7 @@ export default function IntelligenceTab({ atividades, diarios = [] }: Props) {
                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                      <Users className="w-5 h-5 text-blue-500 mb-2" />
-                     <p className="text-2xl font-black text-slate-800">{diarios.length > 0 ? Math.round(diarios.reduce((acc, d) => acc + (d.efetivos?.reduce((s: number, e: any) => s + (e.count || 0), 0) || 0), 0) / diarios.length) : 0}</p>
+                     <p className="text-2xl font-black text-slate-800">{diarios.length > 0 ? Math.round(diarios.reduce((acc, d) => acc + (d.efetivos?.reduce((s: number, e: { role: string; count: number }) => s + (e.count || 0), 0) || 0), 0) / diarios.length) : 0}</p>
                      <p className="text-[10px] font-black text-slate-400 uppercase">Pessoas/Dia</p>
                   </div>
                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">

@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import {
   Cloud, Sun, CloudRain, AlertTriangle, Hammer, Users,
   Save, CheckCircle, Plus, X, Package, AlertCircle, Trash2, Camera,
-  ChevronDown, ChevronUp
+  ChevronUp
 } from 'lucide-react'
 
-import { Obra, Atividade, Diario } from '@/lib/types'
+import { Atividade, Diario } from '@/lib/types'
 
 interface Ocorrencia { tipo: string; detalhe: string }
 interface Equipamento { nome: string; quantidade: number }
 interface Efetivo { funcao: string; count: number }
 
 type Props = {
-  obra: Obra
   obraId: string
   dataInicial?: string
   ativsEmAndamento: Atividade[]
@@ -44,7 +44,7 @@ const OPCOES_OCORRENCIA = [
   'Outros',
 ]
 
-export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, onSalvo }: Props) {
+export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo }: Props) {
   const [data, setData] = useState(() => dataInicial || new Date().toISOString().slice(0, 10))
   const [climaManha, setClimaManha] = useState('ensolarado')
   const [climaTarde, setClimaTarde] = useState('ensolarado')
@@ -67,21 +67,41 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
   const [fotoUrl, setFotoUrl] = useState('')
   const [fotoCap, setFotoCap] = useState('')
 
-  useEffect(() => { if (dataInicial) setData(dataInicial) }, [dataInicial])
+  useEffect(() => { 
+    const init = () => {
+      if (dataInicial) {
+        setData(prev => prev !== dataInicial ? dataInicial : prev)
+      }
+    }
+    init()
+  }, [dataInicial])
 
   useEffect(() => {
-    setAvancos(prev => {
-      const next = { ...prev }
-      ativsEmAndamento.forEach(a => { if (next[a.id] === undefined) next[a.id] = a.progress })
-      return next
-    })
-    setAtividadeExtra(prev => {
-      const next = { ...prev }
-      ativsEmAndamento.forEach(a => {
-        if (!next[a.id]) next[a.id] = { trabalhadores: 0, fotos: [], expanded: false }
+    const updateAvancos = () => {
+      setAvancos(prev => {
+        const next = { ...prev }
+        let changed = false
+        ativsEmAndamento.forEach(a => { 
+          if (next[a.id] === undefined) {
+            next[a.id] = a.progress 
+            changed = true
+          }
+        })
+        return changed ? next : prev
       })
-      return next
-    })
+      setAtividadeExtra(prev => {
+        const next = { ...prev }
+        let changed = false
+        ativsEmAndamento.forEach(a => {
+          if (!next[a.id]) {
+            next[a.id] = { trabalhadores: 0, fotos: [], expanded: false }
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
+    }
+    updateAvancos()
   }, [ativsEmAndamento])
 
   function updateExtra(atividadeId: string, patch: Partial<AtivExtra>) {
@@ -277,7 +297,7 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
                       <div className="grid grid-cols-3 gap-3 mt-4">
                         {extra.fotos.map((f, i) => (
                           <div key={i} className="relative group aspect-video bg-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                            <img src={f.url} alt={f.caption} className="w-full h-full object-cover" />
+                            <Image src={f.url} alt={f.caption || 'Evidência'} fill className="object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
                               <p className="text-white text-[9px] font-bold truncate">{f.caption || 'Sem legenda'}</p>
                               <button type="button" onClick={() => removeFotoAtividade(a.id, i)}
@@ -396,7 +416,7 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
           </div>
           {fotos.map((f, i) => (
             <div key={i} className="relative group aspect-video bg-slate-100 rounded-3xl overflow-hidden shadow-sm">
-              <img src={f.url} alt={f.caption} className="w-full h-full object-cover" />
+              <Image src={f.url} alt={f.caption || 'Foto geral'} fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
                 <p className="text-white text-[10px] font-bold truncate">{f.caption || 'Sem legenda'}</p>
                 <button type="button" onClick={() => setFotos(fotos.filter((_, j) => i !== j))}

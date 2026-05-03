@@ -1,17 +1,31 @@
 'use client'
 
-import { 
-  CloudSun, Users, Hammer, AlertCircle, Package, 
-  Camera, ChevronLeft, Calendar as CalendarIcon, MapPin, 
-  Clock, Sun, Cloud, CloudRain, AlertTriangle
+import Image from 'next/image'
+import {
+  Users, Hammer, AlertCircle,
+  Camera, ChevronLeft, Calendar as CalendarIcon,
+  Sun, Cloud, CloudRain, AlertTriangle
 } from 'lucide-react'
 
+type DiarioData = {
+  date: string
+  weatherMorning?: string
+  weatherAfternoon?: string
+  weatherNight?: string
+  efetivos?: { role: string; count: number }[]
+  atividades?: { id: string; progress: number; atividade?: { name: string; location?: { name: string } } }[]
+  fotos?: { id: string; url: string; caption: string }[]
+  notes?: string
+  ocorrencias?: string
+  equipamentos?: string
+}
+
 type Props = {
-  diario: any
+  diario: DiarioData
   onClose: () => void
 }
 
-const CLIMA_MAP: Record<string, any> = {
+const CLIMA_MAP: Record<string, { label: string; icon: JSX.Element }> = {
   ensolarado: { label: 'Ensolarado', icon: <Sun className="w-4 h-4 text-amber-500" /> },
   nublado: { label: 'Nublado', icon: <Cloud className="w-4 h-4 text-slate-400" /> },
   chuvoso: { label: 'Chuvoso', icon: <CloudRain className="w-4 h-4 text-blue-500" /> },
@@ -20,7 +34,6 @@ const CLIMA_MAP: Record<string, any> = {
 
 export default function DiarioDetalhes({ diario, onClose }: Props) {
   const ocorrencias = diario.ocorrencias ? JSON.parse(diario.ocorrencias) : []
-  const equipamentos = diario.equipamentos ? JSON.parse(diario.equipamentos) : []
 
   return (
     <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-2xl overflow-hidden animate-in slide-in-from-right-10 duration-500">
@@ -64,7 +77,7 @@ export default function DiarioDetalhes({ diario, onClose }: Props) {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
                 <div className="relative z-10">
                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Efetivo em Campo</p>
-                   <h4 className="text-3xl font-black mb-1">{diario.efetivos?.reduce((acc: any, curr: any) => acc + curr.count, 0) || 0} Trabalhadores</h4>
+                   <h4 className="text-3xl font-black mb-1">{diario.efetivos?.reduce((acc: number, curr: { role: string; count: number }) => acc + curr.count, 0) || 0} Trabalhadores</h4>
                    <p className="text-xs text-slate-400 font-medium">Distribuídos em {diario.efetivos?.length || 0} especialidades</p>
                 </div>
                 <Users className="w-16 h-16 text-slate-800" />
@@ -75,7 +88,7 @@ export default function DiarioDetalhes({ diario, onClose }: Props) {
           <div className="space-y-6">
              <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><Hammer className="w-4 h-4 text-blue-600" /> Avanço de Atividades</h4>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {diario.atividades?.map((da: any) => (
+                {diario.atividades?.map((da) => (
                   <div key={da.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between">
                      <div>
                         <p className="text-sm font-black text-slate-800 mb-1">{da.atividade?.name}</p>
@@ -95,9 +108,9 @@ export default function DiarioDetalhes({ diario, onClose }: Props) {
             <div className="space-y-6">
                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><Camera className="w-4 h-4 text-pink-500" /> Galeria de Evidências</h4>
                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {diario.fotos.map((f: any) => (
+                  {diario.fotos.map((f) => (
                     <div key={f.id} className="aspect-square rounded-3xl overflow-hidden shadow-md group relative">
-                       <img src={f.url} alt={f.caption} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                       <Image src={f.url} alt={f.caption || 'Foto da obra'} fill className="object-cover transition-transform group-hover:scale-110" />
                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
                           <p className="text-[10px] font-bold text-white leading-tight">{f.caption}</p>
                        </div>
@@ -120,7 +133,7 @@ export default function DiarioDetalhes({ diario, onClose }: Props) {
                  <div className="p-8 bg-red-50 rounded-[2.5rem] border border-red-100">
                     <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-4">Ocorrências Registradas</p>
                     <div className="space-y-3">
-                       {ocorrencias.map((oc: any, i: number) => (
+                       {(ocorrencias as { tipo: string; detalhe: string }[]).map((oc, i) => (
                          <div key={i} className="flex items-start gap-3">
                             <AlertCircle className="w-4 h-4 text-red-400 mt-0.5" />
                             <p className="text-xs font-bold text-red-900">[{oc.tipo}] {oc.detalhe}</p>

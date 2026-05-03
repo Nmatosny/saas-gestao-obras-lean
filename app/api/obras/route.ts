@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { ProjectCore } from '@/lib/domain/ProjectCore';
+import { ProjectCore, DomainActivity } from '@/lib/domain/ProjectCore';
 import { getWorkspaceSession, unauthorizedResponse } from '@/lib/auth';
 import { obraSchema } from '@/lib/validations';
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const workspaceId = await getWorkspaceSession();
     if (!workspaceId) return unauthorizedResponse();
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const obrasComStats = obras.map(obra => {
       const { atividades, ...rest } = obra;
       
-      const eva = ProjectCore.calculateEVA(atividades as any);
+      const eva = ProjectCore.calculateEVA(atividades as DomainActivity[]);
       const totalWeight = eva.totalWeight || 1;
       const avgReal = (eva.earnedValue * 100) / totalWeight;
       const avgPlanned = (eva.plannedValue * 100) / totalWeight;

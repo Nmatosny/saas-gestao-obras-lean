@@ -8,7 +8,7 @@ import {
 import {
   TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2,
   Clock, DollarSign, Target, Zap, Calendar, Shield, RefreshCw,
-  Download, Share2, Lock
+  Lock
 } from 'lucide-react'
 
 type FinanceiroData = {
@@ -100,7 +100,12 @@ export default function ExecutiveDashboard({ obraId, obra, onSalvarBaseline, has
     }
   }, [obraId])
 
-  useEffect(() => { carregar() }, [carregar])
+  useEffect(() => {
+    const init = async () => {
+      await carregar()
+    }
+    init()
+  }, [carregar])
 
   async function handleBaseline() {
     setSalvandoBaseline(true)
@@ -225,6 +230,7 @@ export default function ExecutiveDashboard({ obraId, obra, onSalvarBaseline, has
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                 {financeiro.porServico.sort((a, b) => b.bac - a.bac).map((s, i) => (
                   <div key={i} className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-slate-500 italic mt-2">&quot;Lag&quot; é o tempo de espera entre o fim de uma atividade e o início da próxima.</p>
                     <div className="flex justify-between items-end">
                        <span className="text-xs font-bold text-slate-700 truncate">{s.name}</span>
                        <span className="text-[10px] font-black text-slate-400">{s.progresso}%</span>
@@ -355,7 +361,7 @@ export default function ExecutiveDashboard({ obraId, obra, onSalvarBaseline, has
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
                 <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} unit="%" domain={[0, 100]} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: any) => v != null ? `${v}%` : '—'} contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', fontSize: 11, fontWeight: 700 }} />
+                <Tooltip formatter={(v: number | string) => v != null ? `${v}%` : '—'} contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', fontSize: 11, fontWeight: 700 }} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', paddingTop: '20px' }} />
                 <Area type="monotone" dataKey="planejado" name="Planejado" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6 3" fill="url(#gpExec)" dot={false} />
                 <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#3b82f6" strokeWidth={2.5} fill="url(#grExec)" dot={false} connectNulls={false} />
@@ -378,7 +384,7 @@ export default function ExecutiveDashboard({ obraId, obra, onSalvarBaseline, has
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {financeiro.alertas.map((a, i) => {
+              {financeiro.alertas.map((a, _idx) => {
                 const styles = {
                   critico: { border: 'border-red-500/20 bg-red-500/5', dot: 'bg-red-500', text: 'text-red-200', badge: 'bg-red-500/20 text-red-400' },
                   atencao: { border: 'border-amber-500/20 bg-amber-500/5', dot: 'bg-amber-500', text: 'text-amber-200', badge: 'bg-amber-500/20 text-amber-400' },

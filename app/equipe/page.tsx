@@ -1,6 +1,6 @@
 'use client'
 
-import { Users2, Hammer, Shield, Construction, Search, Plus } from 'lucide-react'
+import { Users2, Hammer, Shield, Construction } from 'lucide-react'
 
 export default function EquipePage() {
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Atividade, Diario, Obra, Alert } from '@/lib/types';
+import { Atividade, CronogramaVersao, Dependency, Diario, Obra, Alert } from '@/lib/types';
 
 export interface CockpitStats {
   progresso: number;
@@ -18,9 +18,9 @@ export interface CockpitStats {
 export function useObraData(obraId: string) {
   const [obra, setObra] = useState<Obra | null>(null);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
-  const [versoes, setVersoes] = useState<any[]>([]);
+  const [versoes, setVersoes] = useState<CronogramaVersao[]>([]);
   const [diarios, setDiarios] = useState<Diario[]>([]);
-  const [dependencias, setDependencias] = useState<any[]>([])
+  const [dependencias, setDependencias] = useState<Dependency[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [stats, setStats] = useState<CockpitStats | null>(null)
   const [hasBaseline, setHasBaseline] = useState(false);
@@ -67,8 +67,8 @@ export function useObraData(obraId: string) {
       setStats(data.stats ?? null);
       setHasBaseline(data.hasBaseline === true);
       setLoading(false);
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
+    } catch (err) {
+      if ((err as { name?: string })?.name !== 'AbortError') {
         console.error('Erro ao carregar cockpit:', err);
         setError(true);
       }
@@ -77,8 +77,10 @@ export function useObraData(obraId: string) {
   }, [obraId]);
 
   useEffect(() => {
-    // Chama a função assíncrona que gerencia seu próprio estado de loading
-    carregarDados();
+    const init = async () => {
+      await carregarDados();
+    };
+    init();
   }, [carregarDados]);
 
   return {

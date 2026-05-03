@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, Area, AreaChart
+  XAxis, YAxis, CartesianGrid, Legend, Area, AreaChart
 } from 'recharts'
-import { TrendingUp, TrendingDown, AlertTriangle, Target, Calendar, Clock, Zap, Users, CloudRain, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertTriangle, Target, Calendar, Clock, Zap, ArrowRight } from 'lucide-react'
 
 type CncData = { causa: string; count: number; percentual: number }
 type CurvaSPoint = { name: string; planejado: number; realizado: number | null }
@@ -35,18 +35,26 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    Promise.all([
-      fetch(`/api/obras/${obraId}/stats/curva-s`).then(r => r.json()),
-      fetch(`/api/obras/${obraId}/stats/cnc`).then(r => r.json()),
-      fetch(`/api/obras/${obraId}/stats/forecast`).then(r => r.json()),
-      fetch(`/api/dependencias?obraId=${obraId}`).then(r => r.json()),
-    ]).then(([cs, cn, fc, dp]) => {
-      if (Array.isArray(cs)) setCurvaS(cs)
-      if (cn?.data) setCnc(cn)
-      if (fc?.conclusaoPlanejada !== undefined) setForecast(fc)
-      if (Array.isArray(dp)) setDeps(dp)
-    }).catch(() => {}).finally(() => setLoading(false))
+    const init = async () => {
+      setLoading(true)
+      try {
+        const [cs, cn, fc, dp] = await Promise.all([
+          fetch(`/api/obras/${obraId}/stats/curva-s`).then(r => r.json()),
+          fetch(`/api/obras/${obraId}/stats/cnc`).then(r => r.json()),
+          fetch(`/api/obras/${obraId}/stats/forecast`).then(r => r.json()),
+          fetch(`/api/dependencias?obraId=${obraId}`).then(r => r.json()),
+        ])
+        if (Array.isArray(cs)) setCurvaS(cs)
+        if (cn?.data) setCnc(cn)
+        if (fc?.conclusaoPlanejada !== undefined) setForecast(fc)
+        if (Array.isArray(dp)) setDeps(dp)
+      } catch (_e) {
+        // Handle error
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
   }, [obraId])
 
   if (loading) return (
@@ -153,7 +161,7 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} unit="%" domain={[0, 100]} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: any) => v != null ? `${v}%` : '—'} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} />
+                <Tooltip formatter={(v: number | string) => v != null ? `${v}%` : '—'} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', paddingTop: 20 }} />
                 <Area type="monotone" dataKey="planejado" name="Previsto" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="url(#gradPlan)" dot={false} />
                 <Area type="monotone" dataKey="realizado" name="Avanço Real" stroke="#3b82f6" strokeWidth={3} fill="url(#gradReal)" dot={false} connectNulls={false} />
@@ -194,7 +202,7 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
                       <Cell key={i} fill={COLORS_PALETTE[i % COLORS_PALETTE.length]} stroke="none" />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: any, name: any) => [`${v} ocorrências`, name]} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} />
+                  <Tooltip formatter={(v: number | string, name: number | string) => [`${v} ocorrências`, name]} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-3">
@@ -319,12 +327,6 @@ function PMVirtual({ forecast, cnc, deps }: PMVirtualProps) {
 
   if (insights.length === 0) return null
 
-  const priorityStyle = {
-    high: { bg: 'bg-red-50 border-red-100', badge: 'bg-red-600 text-white', dot: 'bg-red-500' },
-    medium: { bg: 'bg-amber-50 border-amber-100', badge: 'bg-amber-500 text-white', dot: 'bg-amber-500' },
-    low: { bg: 'bg-emerald-50 border-emerald-100', badge: 'bg-emerald-600 text-white', dot: 'bg-emerald-500' },
-  }
-
   return (
     <div className="bg-[#0F172A] rounded-2xl p-10 relative overflow-hidden shadow-xl shadow-slate-900/10">
       <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/5 rounded-full blur-[100px] -mr-40 -mt-40" />
@@ -345,7 +347,6 @@ function PMVirtual({ forecast, cnc, deps }: PMVirtualProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {insights.map((ins, i) => {
-            const style = priorityStyle[ins.priority]
             return (
               <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition-colors">
                 <div className="flex items-start gap-3 mb-3">
@@ -364,6 +365,7 @@ function PMVirtual({ forecast, cnc, deps }: PMVirtualProps) {
                   </div>
                 </div>
                 <p className="text-xs font-medium text-slate-400 leading-relaxed mb-3">{ins.body}</p>
+                {ins.isLagInfo && <p className="text-xs font-medium text-slate-500 italic mt-2">&quot;Lag&quot; é o tempo de espera entre o fim de uma atividade e o início da próxima.</p>}
                 {ins.action && (
                   <div className="flex items-start gap-2 pt-3 border-t border-white/10">
                     <ArrowRight className="w-3 h-3 text-blue-400 mt-0.5 shrink-0" />

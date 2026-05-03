@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { 
   History, Folder, ChevronRight, ChevronDown, CheckCircle2, 
-  Calendar, Layers, Box, LayoutGrid, CheckSquare, Square, Rocket, ArrowRight
+  Calendar, Layers, LayoutGrid, CheckSquare, Square, Rocket, ArrowRight
 } from 'lucide-react'
 
 type Service = { id: string; name: string; color: string }
@@ -12,14 +12,16 @@ type Atividade = {
   id: string; name: string; startDate: string; endDate: string; scheduled: boolean; versaoId?: string; locationId: string; serviceId: string; service?: Service; location?: Location;
 }
 
+type Versao = { id: string; nome: string }
+
 type Props = {
   atividades: Atividade[]
-  versoes: any[]
+  versoes: Versao[]
   onUpdate: (id: string, data: Partial<Atividade>) => void
   onComplete: () => void // PONTO 11 - ADICIONADO PARA MUDAR DE ABA
 }
 
-export default function ProgramacaoObras({ atividades, versoes, onUpdate, onComplete }: Props) {
+export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpdate, onComplete }: Props) {
   const [selectedVersao, setSelectedVersao] = useState<string>('mestre')
   const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({})
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())

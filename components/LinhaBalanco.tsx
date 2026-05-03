@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { LayoutGrid, Info, GitBranch, Eye, EyeOff } from 'lucide-react'
+import { LayoutGrid, Info, Eye, EyeOff } from 'lucide-react'
 
 type Atividade = {
   id: string

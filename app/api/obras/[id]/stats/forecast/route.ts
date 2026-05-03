@@ -4,7 +4,7 @@ import { MetricsEngine } from '@/lib/metrics';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -32,7 +32,7 @@ export async function GET(
     const conclusaoPlanejada = new Date(Math.max(...planejadoDates));
 
     // Forecast por Atividade usando MetricsEngine v2 (Não-linear)
-    const servicoStats: any = {};
+    const servicoStats: Record<string, { name: string; color: string; progresso: number; planned: string; projetada: string | null; delta: number }> = {};
 
     atividades.forEach(a => {
       const projetada = MetricsEngine.calculateForecast(new Date(a.startDate), a.progress, today);

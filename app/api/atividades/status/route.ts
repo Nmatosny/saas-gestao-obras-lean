@@ -36,8 +36,8 @@ export async function PATCH(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Erro ao atualizar status:', error.message);
+  } catch (error) {
+    console.error('Erro ao atualizar status:', error);
     return NextResponse.json({ error: 'Erro ao atualizar status da atividade' }, { status: 500 });
   }
 }

@@ -9,13 +9,6 @@ interface ObraHeaderProps {
 }
 
 export default function ObraHeader({ obra, progressPercent, currentStep, stepIndex }: ObraHeaderProps) {
-  const steps = [
-    { label: 'Cronograma' },
-    { label: 'Programação' },
-    { label: 'Controle (RDO)' },
-    { label: 'Análise' }
-  ];
-
   return (
     <div className="bg-white rounded-2xl p-10 border border-slate-100 shadow-sm relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/30 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />

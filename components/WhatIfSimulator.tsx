@@ -3,8 +3,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import {
   Sliders, Play, RotateCcw, TrendingUp, TrendingDown,
-  Calendar, Zap, ChevronDown, ChevronUp, X, CheckCircle2,
-  Clock, AlertTriangle, ArrowRight, Layers
+  Zap, ChevronDown, ChevronUp, X, CheckCircle2,
+  ArrowRight, Layers
 } from 'lucide-react'
 
 type Atividade = {
@@ -76,7 +76,6 @@ function calcularResultado(atividades: Atividade[], cenario: Cenario): Resultado
   const startTimestamps = atividades.map(a => safeTs(a.startDate)).filter((t): t is number => t !== null)
   if (endTimestamps.length === 0 || startTimestamps.length === 0) return null
 
-  const endObra = new Date(Math.max(...endTimestamps))
   const startObra = new Date(Math.min(...startTimestamps))
 
   const totalWeight = atividades.reduce((s, a) => s + (a.weight || 1), 0)
@@ -174,7 +173,12 @@ export default function WhatIfSimulator({ atividades, onClose, onAplicar }: Prop
     recursoExtra,
   }
 
-  const resultado = useMemo(() => calcularResultado(atividades, cenario), [atividades, boost, novaData, recursoExtra])
+  const resultado = useMemo(() => calcularResultado(atividades, {
+    label: 'Cenário Personalizado',
+    boostProdutividade: boost,
+    novaDataInicio: novaData || null,
+    recursoExtra,
+  }), [atividades, boost, novaData, recursoExtra])
 
   const aplicarPreset = useCallback((p: Cenario) => {
     setBoost(p.boostProdutividade)

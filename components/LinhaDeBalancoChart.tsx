@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Clock, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -28,10 +28,6 @@ type Props = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function toMs(iso: string) { return new Date(iso).getTime() }
-
-function formatDateBR(iso: string) {
-  try { return new Date(iso).toLocaleDateString('pt-BR') } catch { return iso }
-}
 
 function monthsBetween(minMs: number, maxMs: number): Date[] {
   const months: Date[] = []
@@ -62,7 +58,7 @@ export default function LinhaDeBalancoChart({ atividades, locais }: Props) {
   const locaisOrdenados = [...locais].sort((a, b) => b.order - a.order)
 
   // Extrair serviços únicos para a legenda (Ponto 10 - REINTEGRADO)
-  const uniqueServices = Array.from(new Map(atividades.map(a => [a.serviceId, a.service]).filter(([id, s]) => !!s)).values())
+  const uniqueServices = Array.from(new Map(atividades.map(a => [a.serviceId, a.service]).filter(([_id, s]) => !!s)).values())
 
   const ativByLocation: Record<string, Atividade[]> = {}
   atividades.forEach((a) => {

@@ -54,8 +54,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(location, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -76,8 +76,8 @@ export async function PATCH(request: Request) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -99,7 +99,7 @@ export async function DELETE(request: Request) {
 
     await prisma.location.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

@@ -79,6 +79,25 @@ export interface Alert {
   meta?: Record<string, unknown>;
 }
 
+export interface CronogramaVersao {
+  id: string;
+  nome: string;
+  descricao?: string | null;
+  data: string | Date;
+  obraId: string;
+  snapshot?: string | null;
+  createdAt: string | Date;
+}
+
+export interface Dependency {
+  id: string;
+  obraId: string;
+  predecessorId: string;
+  sucessorId: string;
+  type: string;
+  lag: number;
+}
+
 export interface FinanceData {
   spi: number;
   cpi: number;

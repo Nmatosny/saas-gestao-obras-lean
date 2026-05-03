@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, ChevronLeft, ChevronRight, Search, Filter } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 
 type Atividade = {
   id: string
@@ -15,10 +15,10 @@ type Atividade = {
 
 type Props = {
   atividades: Atividade[]
-  onUpdateAtividade: (id: string, data: any) => void
+  onUpdateAtividade: (id: string, data: Record<string, unknown>) => void
 }
 
-export default function CronogramaGantt({ atividades, onUpdateAtividade }: Props) {
+export default function CronogramaGantt({ atividades, onUpdateAtividade: _onUpdateAtividade }: Props) {
   const [view, setView] = useState<'mes' | 'semana'>('mes')
 
   if (atividades.length === 0) return null

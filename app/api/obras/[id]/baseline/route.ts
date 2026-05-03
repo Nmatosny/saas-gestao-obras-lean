@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 
 // POST: snapshot all current startDate/endDate → baselineInicio/baselineFim
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -30,15 +30,15 @@ export async function POST(
     );
 
     return NextResponse.json({ success: true, count: atividades.length });
-  } catch (error: any) {
+  } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
 // GET: check if baseline exists for this obra
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -49,7 +49,7 @@ export async function GET(
     });
 
     return NextResponse.json({ hasBaseline: count > 0, count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

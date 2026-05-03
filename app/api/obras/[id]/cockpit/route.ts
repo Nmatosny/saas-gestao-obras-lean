@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { ProjectCore } from '@/lib/domain/ProjectCore';
+import { ProjectCore, DomainActivity } from '@/lib/domain/ProjectCore';
 import { gerarAlertas } from '@/lib/alertService';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
+import type { Atividade, Diario } from '@/lib/types';
 
 /**
  * COCKPIT API (BFF)
  * Versão Hardening 5.0 - Domain Driven
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -44,10 +45,10 @@ export async function GET(
     if (!obra) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
     // 2. Processamento via Camada de Domínio (Inteligência)
-    const eva = ProjectCore.calculateEVA(atividades as any);
-    const forecast = ProjectCore.calculateForecast(atividades as any);
-    const ppc = ProjectCore.calculatePPC(atividades as any);
-    const alerts = gerarAlertas(atividades as any, diarios as any);
+    const eva = ProjectCore.calculateEVA(atividades as DomainActivity[]);
+    const forecast = ProjectCore.calculateForecast(atividades as DomainActivity[]);
+    const ppc = ProjectCore.calculatePPC(atividades as DomainActivity[]);
+    const alerts = gerarAlertas(atividades as Atividade[], diarios as Diario[]);
 
     // 3. Consolidação de Estatísticas
     const totalWeight = eva.totalWeight || 1;
@@ -74,11 +75,11 @@ export async function GET(
     };
 
     return NextResponse.json(cockpitData);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro no Cockpit API:', error);
-    return NextResponse.json({ 
-      error: 'Erro crítico ao consolidar cockpit', 
-      details: error.message 
+    return NextResponse.json({
+      error: 'Erro crítico ao consolidar cockpit',
+      details: String(error)
     }, { status: 500 });
   }
 }

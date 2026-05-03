@@ -1,20 +1,22 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { 
-  BarChart3, TrendingUp, AlertTriangle, CheckCircle2, 
-  Building2, ArrowUpRight, Search, Filter 
+import {
+  BarChart3, AlertTriangle, Search, Filter
 } from 'lucide-react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Cell, PieChart, Pie 
+  ResponsiveContainer, Cell
 } from 'recharts'
 
 const WORKSPACE_ID = 'workspace-1'
 
 export default function InsightsPage() {
-  const [obras, setObras] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  type ObraItem = {
+    nome: string
+    stats?: { status?: string; progresso?: number; desvio?: number }
+  }
+  const [obras, setObras] = useState<ObraItem[]>([])
 
   useEffect(() => {
     fetch(`/api/obras?workspaceId=${WORKSPACE_ID}`)
@@ -25,11 +27,9 @@ export default function InsightsPage() {
         } else {
           setObras([])
         }
-        setLoading(false)
       })
       .catch(() => {
         setObras([])
-        setLoading(false)
       })
   }, [])
 
@@ -113,8 +113,8 @@ export default function InsightsPage() {
                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                      <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.05)' }} />
                      <Bar dataKey="ppc" radius={[0, 4, 4, 0]} barSize={24}>
-                        {chartData.map((d, i) => (
-                           <Cell key={i} fill={d.ppc >= 90 ? '#10b981' : d.ppc >= 80 ? '#3b82f6' : '#f59e0b'} />
+                        {chartData.map((d) => (
+                           <Cell key={d.name} fill={d.ppc >= 90 ? '#10b981' : d.ppc >= 80 ? '#3b82f6' : '#f59e0b'} />
                         ))}
                      </Bar>
                   </BarChart>
@@ -128,8 +128,8 @@ export default function InsightsPage() {
                <AlertTriangle className="w-4 h-4 text-amber-500" /> Saúde do Cronograma
             </h3>
             <div className="flex-1 flex flex-col justify-center gap-6">
-               {chartData.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between">
+               {chartData.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between">
                      <span className="text-xs font-bold text-slate-600">{d.name}</span>
                      <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${d.desvio < 0 ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Files, HardHat, FileSearch, ShieldCheck } from 'lucide-react'
+import { FileText } from 'lucide-react'
 
 export default function DocsPage() {
   return (

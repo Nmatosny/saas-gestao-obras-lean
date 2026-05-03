@@ -20,9 +20,9 @@ export async function PATCH(request: Request) {
     });
 
     return NextResponse.json({ success: true, count: result.count });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro no bulk patch:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -88,8 +88,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ count: criadas.length, atividades: criadas }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro no bulk create:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

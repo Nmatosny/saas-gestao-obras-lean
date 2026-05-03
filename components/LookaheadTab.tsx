@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { 
   Compass, ShieldCheck, AlertTriangle, CheckCircle2, 
-  Clock, Package, User, Plus, X, ArrowRight
+  Clock, Plus, X, ArrowRight
 } from 'lucide-react'
 
 type Restricao = {
@@ -25,27 +25,25 @@ type Atividade = {
 
 type Props = {
   atividades: Atividade[]
-  obraId: string
   onRefresh: () => void
 }
 
-export default function LookaheadTab({ atividades, obraId, onRefresh }: Props) {
+export default function LookaheadTab({ atividades, onRefresh }: Props) {
   const [selectedTask, setSelectedTask] = useState<Atividade | null>(null)
   const [novaRestricao, setNovaRestricao] = useState('')
 
   // Lookahead: atividades que começam nos próximos 30 dias e ainda não começaram
-  const hoje = new Date()
-  const limiteLookahead = new Date()
-  limiteLookahead.setDate(hoje.getDate() + 30)
-
+  const hoje = useMemo(() => new Date(), [])
   const lookaheadAtivs = useMemo(() => {
+    const limiteLookahead = new Date(hoje)
+    limiteLookahead.setDate(hoje.getDate() + 30)
     return atividades
       .filter(a => {
         const start = new Date(a.startDate)
         return start >= hoje && start <= limiteLookahead && a.progress < 100
       })
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-  }, [atividades])
+  }, [atividades, hoje])
 
   const stats = useMemo(() => {
     const total = lookaheadAtivs.length

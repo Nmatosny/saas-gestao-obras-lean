@@ -45,8 +45,8 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(atividadesFormatadas);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -64,7 +64,7 @@ export async function PATCH(request: Request) {
     const isOwner = await validateAtividadeOwnership(id, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (data.status) updateData.status = data.status;
     if (data.scheduled !== undefined) updateData.scheduled = Boolean(data.scheduled);
     if (data.progress !== undefined) updateData.progress = Number(data.progress);
@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

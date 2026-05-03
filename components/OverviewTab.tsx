@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Shield, TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
-  Clock, Calendar, ChevronRight, ArrowRight, Zap, Lightbulb,
-  Activity, Target, Sliders, RefreshCw, AlertTriangle, XCircle,
+  TrendingUp, CheckCircle2,
+  Calendar, ChevronRight, ArrowRight, Zap,
+  Activity, Target, Sliders, AlertTriangle, XCircle,
   Radio, Cpu, BarChart3
 } from 'lucide-react'
 import { gerarAlertas, type Alert } from '@/lib/alertService'

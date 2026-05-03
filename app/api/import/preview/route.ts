@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       const sheet = workbook.Sheets[sheetName];
       
       // Converte as primeiras linhas para pegar o cabeçalho
-      const rows: any[] = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+      const rows = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
       
       if (rows.length === 0) {
          return NextResponse.json({ error: 'A planilha está vazia.' }, { status: 400 });

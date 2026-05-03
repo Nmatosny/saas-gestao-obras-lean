@@ -29,7 +29,8 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   const [impedimentoPendente, setImpedimentoPendente] = useState<{ id: string } | null>(null)
 
   useEffect(() => {
-    setHasMounted(true)
+    const init = () => setHasMounted(true)
+    init()
   }, [])
 
   const columns = [

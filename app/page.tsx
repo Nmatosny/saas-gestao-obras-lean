@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { 
@@ -42,7 +42,7 @@ export default function PortfolioPage() {
   const [submitting, setSubmitting] = useState(false)
   const [filtro, setFiltro] = useState('')
 
-  async function fetchObras() {
+  const fetchObras = useCallback(async () => {
     try {
       const res = await fetch(`/api/obras`)
       if (res.ok) {
@@ -54,13 +54,16 @@ export default function PortfolioPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    if (session) {
-      fetchObras()
+    const init = async () => {
+      if (session) {
+        await fetchObras()
+      }
     }
-  }, [session])
+    init()
+  }, [session, fetchObras])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

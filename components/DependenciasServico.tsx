@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { GitBranch, Plus, Trash2, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react'
 
 type Service = { id: string; name: string; color: string }
@@ -27,11 +27,7 @@ export default function DependenciasServico({ obraId }: Props) {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
-  useEffect(() => {
-    carregar()
-  }, [obraId])
-
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setLoading(true)
     try {
       const [svcRes, depRes] = await Promise.all([
@@ -43,7 +39,14 @@ export default function DependenciasServico({ obraId }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [obraId])
+
+  useEffect(() => {
+    const init = async () => {
+      await carregar()
+    }
+    init()
+  }, [carregar])
 
   async function criar() {
     if (!predId || !sucId) return
@@ -233,7 +236,7 @@ export default function DependenciasServico({ obraId }: Props) {
                   {/* Lógica textual */}
                   <div className="hidden md:block flex-1 min-w-0">
                     <p className="text-[10px] font-medium text-slate-400 italic truncate">
-                      "{d.servicoSucessor.name}" começa {d.lagDias > 0 ? `${d.lagDias} dia(s) após` : 'quando'} "{d.servicoPredecessor.name}" terminar em cada local
+                      &quot;{d.servicoSucessor.name}&quot; começa {d.lagDias > 0 ? `${d.lagDias} dia(s) após` : 'quando'} &quot;{d.servicoPredecessor.name}&quot; terminar em cada local
                     </p>
                   </div>
 
@@ -254,7 +257,7 @@ export default function DependenciasServico({ obraId }: Props) {
         <div className="flex items-start gap-3 p-6 bg-blue-50/40 border border-blue-50 rounded-2xl">
           <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
           <p className="text-xs text-blue-700/60 font-medium leading-relaxed">
-            <strong className="text-blue-800">Como funciona:</strong> Ao definir "Reboco depende de Alvenaria",
+            <strong className="text-blue-800">Como funciona:</strong> Ao definir &quot;Reboco depende de Alvenaria&quot;,
             o sistema considera que o Reboco em cada local só pode iniciar após a Alvenaria ser concluída
             no mesmo local. A Linha de Balanço exibirá uma <em>linha fantasma</em> mostrando o impacto de atrasos.
           </p>

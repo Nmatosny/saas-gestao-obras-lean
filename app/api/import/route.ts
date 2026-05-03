@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     if (!isOwner) return unauthorizedResponse();
 
     const mappingStr = formData.get('mapping') as string;
-    let mapping = null;
+    let mapping: { local: string, servico: string, inicio: string, fim: string, custo: string } | null = null;
     if (mappingStr) {
       try { mapping = JSON.parse(mappingStr); } catch {}
     }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     let activitiesToCreate: Array<{ local: string, servico: string, inicio: Date, fim: Date, custo: number, peso: number }> = [];
 
-    const parseExcelDate = (value: any): Date => {
+    const parseExcelDate = (value: unknown): Date => {
       if (!value) return new Date();
       if (typeof value === 'number') {
         return new Date((value - 25569) * 86400 * 1000);
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
           return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
         }
       }
-      const d = new Date(value);
+      const d = new Date(value as string | number | Date);
       return isNaN(d.getTime()) ? new Date() : d;
     };
 
@@ -52,10 +52,10 @@ export async function POST(request: Request) {
       const workbook = xlsx.read(buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const rows: any[] = xlsx.utils.sheet_to_json(sheet);
+      const rows = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
-      activitiesToCreate = rows.map((row: any) => {
-        let valLocal, valServico, valInicio, valFim, valCusto, valPeso;
+      activitiesToCreate = rows.map((row) => {
+        let valLocal, valServico, valInicio, valFim, valCusto;
 
         if (mapping) {
           valLocal = row[mapping.local];
@@ -63,7 +63,6 @@ export async function POST(request: Request) {
           valInicio = row[mapping.inicio];
           valFim = row[mapping.fim];
           valCusto = row[mapping.custo];
-          valPeso = row[mapping.peso];
         } else {
           const getVal = (possibleNames: string[]) => {
             for (const key of Object.keys(row)) {
@@ -98,32 +97,28 @@ export async function POST(request: Request) {
       }
 
       const tasks = project.Tasks[0].Task;
-      const taskDict: Record<string, any> = {};
-      tasks.forEach((t: any) => {
-        if (t.UID) taskDict[t.UID[0]] = t;
-      });
 
-      tasks.forEach((task: any) => {
+      tasks.forEach((task: Record<string, unknown[]>) => {
         const isSummary = task.Summary && task.Summary[0] === '1';
         if (isSummary) return;
         
         let localName = 'Geral';
-        const parentWBS = task.WBS ? task.WBS[0].split('.').slice(0, -1).join('.') : null;
+        const parentWBS = task.WBS ? (task.WBS[0] as string).split('.').slice(0, -1).join('.') : null;
         
         if (parentWBS) {
-          const parentTask = tasks.find((t: any) => t.WBS && t.WBS[0] === parentWBS);
+          const parentTask = tasks.find((t: Record<string, unknown[]>) => t.WBS && t.WBS[0] === parentWBS);
           if (parentTask && parentTask.Name) {
-            localName = parentTask.Name[0];
+            localName = parentTask.Name[0] as string;
           }
         }
 
         activitiesToCreate.push({
           local: localName,
-          servico: task.Name ? task.Name[0] : 'Tarefa Sem Nome',
-          inicio: task.Start ? new Date(task.Start[0]) : new Date(),
-          fim: task.Finish ? new Date(task.Finish[0]) : new Date(),
+          servico: task.Name ? (task.Name[0] as string) : 'Tarefa Sem Nome',
+          inicio: task.Start ? new Date(task.Start[0] as string) : new Date(),
+          fim: task.Finish ? new Date(task.Finish[0] as string) : new Date(),
           custo: task.Cost ? Number(task.Cost[0]) : 0,
-          peso: task.Work ? Number(task.Work[0].replace('PT','').replace('H','')) : 0,
+          peso: task.Work ? Number((task.Work[0] as string).replace('PT','').replace('H','')) : 0,
         });
       });
     } 
@@ -200,7 +195,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: 'Importação concluída com sucesso', atividadesImportadas: result.count }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro na importação:', error);
     return NextResponse.json({ error: 'Erro processando o arquivo. Verifique o formato.' }, { status: 500 });
   }

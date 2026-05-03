@@ -1,15 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle2, 
-  AlertCircle, 
-  CloudSun, 
-  Users, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
   Plus,
-  ArrowRight
 } from 'lucide-react'
 
 type Diario = {
