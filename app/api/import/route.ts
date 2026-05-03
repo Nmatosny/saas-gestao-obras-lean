@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const mappingStr = formData.get('mapping') as string;
     let mapping = null;
     if (mappingStr) {
-      try { mapping = JSON.parse(mappingStr); } catch (e) {}
+      try { mapping = JSON.parse(mappingStr); } catch {}
     }
 
     const bytes = await file.arrayBuffer();

@@ -31,7 +31,7 @@ export default function RegisterPage() {
         const data = await res.json()
         setError(data.error || 'Erro ao registrar conta.')
       }
-    } catch (err) {
+    } catch {
       setError('Erro de conexão.')
     } finally {
       setLoading(false)

@@ -31,7 +31,7 @@ export default function ObraImportModal({ obraId, onClose, onImported }: ObraImp
       } else {
         setImportErro(data.error || 'Falha na importação')
       }
-    } catch (e) {
+    } catch {
       setImportErro('Erro de conexão')
     } finally {
       setImportando(false)

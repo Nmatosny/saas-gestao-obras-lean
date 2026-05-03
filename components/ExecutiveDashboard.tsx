@@ -93,8 +93,8 @@ export default function ExecutiveDashboard({ obraId, obra, onSalvarBaseline, has
       if (fin.bac !== undefined) setFinanceiro(fin)
       if (fc.conclusaoPlanejada !== undefined) setForecast(fc)
       if (Array.isArray(cs)) setCurvaS(cs)
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      console.error(error)
     } finally {
       setLoading(false)
     }

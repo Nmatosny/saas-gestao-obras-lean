@@ -75,8 +75,8 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate, onComp
         const errorData = await res.json()
         alert(`Erro ao programar: ${errorData.error || 'Erro desconhecido'}`)
       }
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
       alert("Erro de conexão com o servidor. Verifique sua internet.")
     } finally {
       setLoading(false)
