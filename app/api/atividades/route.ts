@@ -10,24 +10,17 @@ export async function GET(request: Request) {
 
     const today = new Date();
 
-    // Query Robusta via SQL Puro
-    // Tenta buscar restrições se a tabela existir, senão retorna array vazio
-    let atividades: any[] = [];
-    try {
-      atividades = await prisma.$queryRawUnsafe(`
-        SELECT a.*, 
-               l.name as "locationName", l.order as "locationOrder",
-               s.name as "serviceName", s.color as "serviceColor"
-        FROM "Atividade" a
-        LEFT JOIN "Location" l ON a."locationId" = l.id
-        LEFT JOIN "Service" s ON a."serviceId" = s.id
-        WHERE a."obraId" = $1
-        ORDER BY a."startDate" ASC
-      `, obraId);
-    } catch (e) {
-      console.error("Erro na query principal:", e);
-      return NextResponse.json({ error: 'Erro ao acessar o banco de dados' }, { status: 500 });
-    }
+    const atividades = await prisma.atividade.findMany({
+      where: { obraId },
+      include: {
+        location: true,
+        service: true,
+        restricoes: {
+          select: { id: true, resolvido: true }
+        }
+      },
+      orderBy: { startDate: 'asc' }
+    });
 
     const atividadesFormatadas = atividades.map(ativ => {
       const start = new Date(ativ.startDate);
@@ -42,9 +35,6 @@ export async function GET(request: Request) {
 
       return {
         ...ativ,
-        restricoes: [], // As restrições serão carregadas sob demanda no modal para evitar overhead
-        location: { id: ativ.locationId, name: ativ.locationName, order: ativ.locationOrder },
-        service: { id: ativ.serviceId, name: ativ.serviceName, color: ativ.serviceColor },
         plannedProgress: Math.round(plannedProgress)
       };
     });
@@ -60,29 +50,20 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, ...data } = body;
     
-    if (data.status) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "status" = $1 WHERE "id" = $2`, data.status, id);
-    }
-    
-    if (data.scheduled !== undefined) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "scheduled" = $1 WHERE "id" = $2`, Boolean(data.scheduled), id);
-    }
+    if (!id) return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
 
-    if (data.progress !== undefined) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "progress" = $1 WHERE "id" = $2`, Number(data.progress), id);
-    }
+    const updateData: any = {};
+    if (data.status) updateData.status = data.status;
+    if (data.scheduled !== undefined) updateData.scheduled = Boolean(data.scheduled);
+    if (data.progress !== undefined) updateData.progress = Number(data.progress);
+    if (data.causaNaoCumprimento !== undefined) updateData.causaNaoCumprimento = data.causaNaoCumprimento || null;
+    if (data.impactoDescricao !== undefined) updateData.impactoDescricao = data.impactoDescricao || null;
+    if (data.custoOrcado !== undefined) updateData.custoOrcado = Number(data.custoOrcado);
 
-    if (data.causaNaoCumprimento !== undefined) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "causaNaoCumprimento" = $1 WHERE "id" = $2`, data.causaNaoCumprimento || null, id);
-    }
-
-    if (data.impactoDescricao !== undefined) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "impactoDescricao" = $1 WHERE "id" = $2`, data.impactoDescricao || null, id);
-    }
-
-    if (data.custoOrcado !== undefined) {
-      await prisma.$executeRawUnsafe(`UPDATE "Atividade" SET "custoOrcado" = $1 WHERE "id" = $2`, Number(data.custoOrcado), id);
-    }
+    await prisma.atividade.update({
+      where: { id },
+      data: updateData
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

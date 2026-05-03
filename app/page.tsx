@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { 
   Plus, 
   Search, 
@@ -15,8 +16,6 @@ import {
   MapPin,
   AlertTriangle
 } from 'lucide-react'
-
-const WORKSPACE_ID = 'workspace-1'
 
 type Obra = {
   id: string
@@ -34,6 +33,7 @@ type Obra = {
 }
 
 export default function PortfolioPage() {
+  const { data: session } = useSession()
   const [obras, setObras] = useState<Obra[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -44,32 +44,38 @@ export default function PortfolioPage() {
 
   async function fetchObras() {
     try {
-      const res = await fetch(`/api/obras?workspaceId=${WORKSPACE_ID}`)
-      const data = await res.json()
-      setObras(data)
+      const res = await fetch(`/api/obras`)
+      if (res.ok) {
+        const data = await res.json()
+        setObras(data)
+      }
     } catch {
-      // silenciar erro
+      // erro silencioso
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchObras()
-  }, [])
+    if (session) {
+      fetchObras()
+    }
+  }, [session])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
     setSubmitting(true)
     try {
-      await fetch('/api/obras', {
+      const res = await fetch('/api/obras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: name, descricao: description, workspaceId: WORKSPACE_ID }),
+        body: JSON.stringify({ nome: name, descricao: description }),
       })
-      setName(''); setDescription(''); setShowModal(false)
-      fetchObras()
+      if (res.ok) {
+        setName(''); setDescription(''); setShowModal(false)
+        fetchObras()
+      }
     } finally {
       setSubmitting(false)
     }
@@ -79,6 +85,8 @@ export default function PortfolioPage() {
   const mediaProgresso = obras.length > 0 ? Math.round(obras.reduce((acc, o) => acc + o.stats.progresso, 0) / obras.length) : 0
   const emAlerta = obras.filter(o => o.stats.status === 'Crítico' || o.stats.status === 'Atenção').length
 
+  if (!session) return null // O middleware lida com o redirecionamento
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-10 min-h-screen bg-slate-50/20">
       
@@ -86,7 +94,7 @@ export default function PortfolioPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Torre de Controle</h1>
-          <p className="text-slate-500 font-medium mt-1 text-lg">Visão consolidada do seu portfólio de engenharia.</p>
+          <p className="text-slate-500 font-medium mt-1 text-lg">Bem-vindo, {session.user?.name || 'Engenheiro'}.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -149,6 +157,10 @@ export default function PortfolioPage() {
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="h-64 bg-slate-100 animate-pulse rounded-[3rem]" />
           ))
+        ) : obrasFiltradas.length === 0 ? (
+          <div className="col-span-full py-20 text-center">
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhuma obra encontrada no seu workspace.</p>
+          </div>
         ) : obrasFiltradas.map((obra) => (
           <Link
             key={obra.id}
@@ -195,7 +207,7 @@ export default function PortfolioPage() {
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
                    <div 
-                     className={`h-full rounded-full transition-all duration-1000 ${obra.stats.desvio < -5 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.3)]'}`} 
+                     className={`h-full rounded-full transition-all duration-1000 ${obra.stats.desvio < -5 ? 'bg-red-500' : 'bg-blue-600'}`} 
                      style={{ width: `${obra.stats.progresso}%` }} 
                    />
                 </div>
@@ -226,8 +238,6 @@ export default function PortfolioPage() {
               <Building2 className="w-10 h-10" />
             </div>
             <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Iniciar Nova Obra</h2>
-            <p className="text-slate-500 font-medium text-sm mb-10">Configure os parâmetros base para o monitoramento inteligente.</p>
-            
             <form onSubmit={handleSubmit} className="space-y-8">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Nome do Projeto</label>

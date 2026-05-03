@@ -2,15 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import { 
   LayoutDashboard, 
   HardHat, 
   BarChart3, 
   Users2, 
-  Settings, 
   LogOut,
   Building2,
-  CalendarDays,
   FileText
 } from 'lucide-react'
 
@@ -24,6 +23,10 @@ const MENU_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  // Ocultar sidebar em telas de login e registro
+  if (pathname === '/login' || pathname === '/register') return null
 
   return (
     <aside className="w-64 bg-[#0F172A] h-screen sticky top-0 flex flex-col border-r border-slate-800/50 text-slate-300">
@@ -47,14 +50,13 @@ export default function Sidebar() {
           return (
             <Link
               key={item.id}
-              href={item.disabled ? '#' : item.href}
+              href={item.href}
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all
                 ${isActive 
                   ? 'bg-slate-800 text-white border-l-4 border-blue-600 rounded-l-none' 
                   : 'hover:bg-slate-800/50 hover:text-white'
                 }
-                ${item.disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
               `}
             >
               <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-slate-500'}`} />
@@ -67,22 +69,26 @@ export default function Sidebar() {
       {/* Footer Info */}
       <div className="p-6 border-t border-slate-800/50">
         <div className="bg-slate-800/30 rounded-xl p-4 mb-6">
-          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Engenheiro Logado</p>
+          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Usuário Logado</p>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">JS</div>
+            <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-[10px] font-bold text-blue-400 border border-blue-600/30">
+              {session?.user?.name?.[0]?.toUpperCase() || 'U'}
+            </div>
             <div className="flex flex-col">
-               <span className="text-xs font-bold text-slate-200">João Silva</span>
-               <span className="text-[9px] text-slate-500">Engenheiro Senior</span>
+               <span className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{session?.user?.name || 'Usuário'}</span>
+               <span className="text-[9px] text-slate-500">Engenheiro Responsável</span>
             </div>
           </div>
         </div>
         
-        <button className="flex items-center gap-3 px-4 py-2 w-full text-xs font-bold hover:text-white transition-colors">
-          <LogOut className="w-4 h-4 text-slate-500" />
+        <button 
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-3 px-4 py-2 w-full text-xs font-bold hover:text-white transition-colors group"
+        >
+          <LogOut className="w-4 h-4 text-slate-500 group-hover:text-red-400" />
           Encerrar Sessão
         </button>
       </div>
     </aside>
   )
 }
-

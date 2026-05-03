@@ -10,22 +10,19 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ID e Status são obrigatórios' }, { status: 400 });
     }
 
-    // Lógica de negócio: Se o status for Concluído, forçamos o progresso para 100%
+    const data: any = { status };
     if (status === 'concluido') {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "Atividade" SET "status" = $1, "progress" = 100 WHERE "id" = $2`,
-        status, id
-      );
-    } else {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "Atividade" SET "status" = $1 WHERE "id" = $2`,
-        status, id
-      );
+      data.progress = 100;
     }
+
+    await prisma.atividade.update({
+      where: { id },
+      data
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Erro ao atualizar status (SQL):', error.message);
+    console.error('Erro ao atualizar status:', error.message);
     return NextResponse.json({ error: 'Erro ao atualizar status da atividade' }, { status: 500 });
   }
 }
