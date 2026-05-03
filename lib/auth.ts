@@ -4,11 +4,13 @@ import { prisma } from "@/lib/db";
 import { authOptions } from "./auth-options";
 
 export async function getWorkspaceSession(): Promise<string | null> {
-  const session = await getServerSession(authOptions) as Session | null;
-  if (!session || !session.user || !(session.user as any).workspaceId) {
+  const session = await getServerSession(authOptions);
+  const user = session?.user as { workspaceId?: string } | undefined;
+  
+  if (!user?.workspaceId) {
     return null;
   }
-  return (session.user as any).workspaceId;
+  return user.workspaceId;
 }
 
 export async function validateObraOwnership(obraId: string, workspaceId: string) {

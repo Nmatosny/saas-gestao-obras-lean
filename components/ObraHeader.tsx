@@ -1,7 +1,8 @@
 import { MapPin, User, ArrowLeft } from 'lucide-react';
+import { Obra } from '@/lib/types';
 
 interface ObraHeaderProps {
-  obra: any;
+  obra: Obra;
   progressPercent: number;
   currentStep: { label: string, info: string };
   stepIndex: number;

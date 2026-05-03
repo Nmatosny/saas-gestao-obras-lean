@@ -24,6 +24,7 @@ import ObraImportModal from '@/components/ObraImportModal'
 import OverviewTab from '@/components/OverviewTab'
 import OnboardingWizard from '@/components/OnboardingWizard'
 import { useObraData } from '@/hooks/useObraData'
+import { Diario, Atividade } from '@/lib/types'
 
 export default function ObraPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: obraId } = use(params)
@@ -37,7 +38,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   const [subAba, setSubAba] = useState('gantt')
   const [showImport, setShowImport] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedDiario, setSelectedDiario] = useState<any>(null)
+  const [selectedDiario, setSelectedDiario] = useState<Diario | null>(null)
   const [showRdoForm, setShowRdoForm] = useState(false)
   const [showWizard, setShowWizard] = useState(true)
   const [shareFeedback, setShareFeedback] = useState(false)
@@ -67,7 +68,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     window.print()
   }, [])
 
-  const handleUpdateAtividade = useCallback(async (id: string, data: any) => {
+  const handleUpdateAtividade = useCallback(async (id: string, data: Partial<Atividade>) => {
     await fetch('/api/atividades', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -146,7 +147,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
       />
 
       {/* Navegação */}
-      <div className="flex flex-col md:flex-row gap-4 mb-10 no-print">
+      <div className="flex flex-col md:flex-row gap-4 mb-10 no-print relative z-20">
         <div className="bg-slate-200/40 p-1 rounded-2xl flex gap-1 border border-slate-200/60 overflow-x-auto flex-1">
           {[
             { id: 'overview',      name: 'Resumo',        icon: <LayoutDashboard className="w-4 h-4" /> },

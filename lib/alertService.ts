@@ -1,3 +1,5 @@
+import { Atividade, Diario, FinanceData } from './types'
+
 export type AlertSeverity = 'critico' | 'atencao' | 'ok'
 
 export type Alert = {
@@ -10,37 +12,6 @@ export type Alert = {
   meta?: Record<string, unknown>
 }
 
-type Atividade = {
-  id: string
-  name: string
-  progress: number
-  plannedProgress?: number
-  startDate: string
-  endDate: string
-  status?: string
-  causaNaoCumprimento?: string
-  weight?: number
-}
-
-type DiarioAtividade = {
-  progress: number
-  date: string
-}
-
-type Diario = {
-  id: string
-  date: string
-  atividadesRegistradas?: DiarioAtividade[]
-}
-
-type FinanceiroData = {
-  spi?: number
-  cpi?: number
-  vac?: number
-  eac?: number
-  bac?: number
-}
-
 function safeDate(val: string | null | undefined): Date | null {
   if (!val) return null;
   const d = new Date(val);
@@ -50,7 +21,7 @@ function safeDate(val: string | null | undefined): Date | null {
 export function gerarAlertas(
   atividades: Atividade[],
   diarios: Diario[] = [],
-  financeiro?: FinanceiroData
+  financeiro?: FinanceData
 ): Alert[] {
   const alerts: Alert[] = []
   const today = new Date()

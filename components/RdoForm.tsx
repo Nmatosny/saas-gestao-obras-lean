@@ -7,21 +7,18 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react'
 
-type Obra = { id: string; nome: string; endereco?: string; engenheiro?: string }
-type AtividadeEmAndamento = {
-  id: string
-  name: string
-  progress: number
-  plannedProgress: number
-  service?: { name: string; color: string }
-  location?: { name: string }
-}
+import { Obra, Atividade, Diario } from '@/lib/types'
+
+interface Ocorrencia { tipo: string; detalhe: string }
+interface Equipamento { nome: string; quantidade: number }
+interface Efetivo { funcao: string; count: number }
+
 type Props = {
   obra: Obra
   obraId: string
   dataInicial?: string
-  ativsEmAndamento: AtividadeEmAndamento[]
-  onSalvo: (novoDiario: any) => void
+  ativsEmAndamento: Atividade[]
+  onSalvo: (novoDiario: Diario) => void
 }
 
 // Per-activity extra data tracked alongside avancos
@@ -52,9 +49,9 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
   const [climaManha, setClimaManha] = useState('ensolarado')
   const [climaTarde, setClimaTarde] = useState('ensolarado')
   const [climaNoite, setClimaNoite] = useState('ensolarado')
-  const [ocorrencias, setOcorrencias] = useState<any[]>([])
-  const [equipamentos, setEquipamentos] = useState<any[]>([])
-  const [efetivos, setEfetivos] = useState<any[]>([])
+  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([])
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
+  const [efetivos, setEfetivos] = useState<Efetivo[]>([])
   const [avancos, setAvancos] = useState<Record<string, number>>({})
   const [atividadeExtra, setAtividadeExtra] = useState<Record<string, AtivExtra>>({})
   const [fotos, setFotos] = useState<{ url: string; caption: string }[]>([])
@@ -212,7 +209,7 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
 
           {ativsEmAndamento.map(a => {
             const val = avancos[a.id] ?? a.progress
-            const desvio = val - a.plannedProgress
+            const desvio = val - (a.plannedProgress || 0)
             const extra = atividadeExtra[a.id] || { trabalhadores: 0, fotos: [], expanded: false }
 
             return (
@@ -242,7 +239,7 @@ export default function RdoForm({ obra, obraId, dataInicial, ativsEmAndamento, o
 
                     {/* Progresso */}
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Meta: {a.plannedProgress}%</p>
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Meta: {a.plannedProgress || 0}%</p>
                       <div className="flex items-center gap-1">
                         <input type="number" min={0} max={100}
                           className={`w-16 bg-white border rounded-xl px-3 py-2 text-sm font-black text-center ${desvio < 0 ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-800'}`}

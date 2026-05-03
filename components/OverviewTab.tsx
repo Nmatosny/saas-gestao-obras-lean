@@ -10,10 +10,12 @@ import {
 import { gerarAlertas, type Alert } from '@/lib/alertService'
 import WhatIfSimulator from '@/components/WhatIfSimulator'
 
+import { Atividade, Diario, Obra, FinanceData } from '@/lib/types'
+
 interface OverviewTabProps {
-  atividades: any[]
-  diarios: any[]
-  obra: any
+  atividades: Atividade[]
+  diarios: Diario[]
+  obra: Obra
   onSetAba: (aba: string) => void
 }
 
@@ -100,7 +102,7 @@ function HealthBar({ label, value, max = 100, color }: { label: string; value: n
 
 export default function OverviewTab({ atividades, diarios, obra, onSetAba }: OverviewTabProps) {
   const [alerts, setAlerts] = useState<Alert[]>([])
-  const [financeiro, setFinanceiro] = useState<any>(null)
+  const [financeiro, setFinanceiro] = useState<FinanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [simuladorAberto, setSimuladorAberto] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -127,7 +129,7 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
         if (alertsRes?.ok) {
           const backendAlerts = await alertsRes.json()
           const merged = [...localAlerts]
-          backendAlerts.forEach((ba: any) => {
+          backendAlerts.forEach((ba: Alert) => {
             if (!merged.find(la => la.id === ba.id)) merged.push(ba)
           })
           setAlerts(merged)

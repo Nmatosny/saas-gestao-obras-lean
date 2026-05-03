@@ -9,33 +9,13 @@ import {
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-type Service = { id: string; name: string; color: string }
-type Location = { id: string; name: string }
-type Restricao = { id: string; descricao: string; resolvido: boolean }
-
-export type AtividadeKanban = {
-  id: string
-  name: string
-  progress: number
-  plannedProgress: number
-  startDate: string
-  endDate: string
-  status: string
-  service?: Service
-  location?: Location
-  restricoes?: Restricao[]
-  isCritical?: boolean
-  causaNaoCumprimento?: string
-  impactoDescricao?: string
-}
+import { Atividade, Restricao } from '@/lib/types'
 
 type Props = {
-  atividades: AtividadeKanban[]
-  onUpdateTask: (id: string, data: Partial<AtividadeKanban>) => void
+  atividades: Atividade[]
+  onUpdateTask: (id: string, data: Partial<Atividade>) => void
   onStatusChange: (id: string, newStatus: string) => void
-  onGoToProgramacao?: () => void // Adicionado para onboarding
+  onGoToProgramacao?: () => void 
 }
 
 // ─── Componente Principal ──────────────────────────────────────────────────────
@@ -45,7 +25,7 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   const [searchTerm, setSearchTerm] = useState('')
   const [filterService, setFilterService] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
-  const [selectedTask, setSelectedTask] = useState<AtividadeKanban | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Atividade | null>(null)
   const [impedimentoPendente, setImpedimentoPendente] = useState<{ id: string } | null>(null)
 
   useEffect(() => {
@@ -157,7 +137,7 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                   >
                     {filteredAtivs.filter(a => a.status === col.id).map((a, index) => {
                       const diasAtraso = Math.max(0, Math.floor((new Date().getTime() - new Date(a.startDate).getTime()) / (1000 * 60 * 60 * 24)))
-                      const isDelayed = a.status !== 'concluido' && diasAtraso > 0 && a.progress < a.plannedProgress
+                      const isDelayed = a.status !== 'concluido' && diasAtraso > 0 && a.progress < (a.plannedProgress || 0)
 
                       return (
                         <Draggable key={a.id} draggableId={a.id} index={index}>
@@ -231,7 +211,7 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                                  <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
                                     <div 
                                       className={`h-full transition-all duration-1000 ease-out ${
-                                        a.progress >= a.plannedProgress ? 'bg-emerald-500' : 'bg-red-500'
+                                        a.progress >= (a.plannedProgress || 0) ? 'bg-emerald-500' : 'bg-red-500'
                                       }`}
                                       style={{ width: `${a.progress}%` }}
                                     />
@@ -337,7 +317,7 @@ function ImpedimentoModal({ onConfirm, onCancel }: { onConfirm: (causa: string, 
   )
 }
 
-function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: AtividadeKanban; onClose: () => void; onUpdateTask: (id: string, d: Partial<AtividadeKanban>) => void }) {
+function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: Atividade; onClose: () => void; onUpdateTask: (id: string, d: Partial<Atividade>) => void }) {
   const [nova, setNova] = useState('')
   const [restricoes, setRestricoes] = useState<Restricao[]>([])
   const [causa, setCausa] = useState(task.causaNaoCumprimento || '')

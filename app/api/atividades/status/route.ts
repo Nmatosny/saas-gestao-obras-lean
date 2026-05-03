@@ -27,10 +27,13 @@ export async function PATCH(request: Request) {
     const isOwner = await validateAtividadeOwnership(id, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
-    const data: any = { status };
-    if (status === 'concluido') data.progress = 100;
+    const updateData: { status: string; progress?: number } = { status };
+    if (status === 'concluido') updateData.progress = 100;
 
-    await prisma.atividade.update({ where: { id }, data });
+    await prisma.atividade.update({ 
+      where: { id }, 
+      data: updateData 
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
