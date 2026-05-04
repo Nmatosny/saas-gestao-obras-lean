@@ -78,79 +78,74 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Já existe um RDO para esta data' }, { status: 409 });
     }
 
+    // 1. Resolver userId antes da transaction
+    const user = await prisma.user.findFirst({ where: { workspaceId } });
+    const userId = user?.id || '';
+
+    // 2. Pre-carregar estados das atividades
+    const atividadeIds = (atividades || []).map(a => a.atividadeId);
+    const currentAtividades = await prisma.atividade.findMany({
+      where: { id: { in: atividadeIds } }
+    });
+    const currentAtivMap = new Map(currentAtividades.map(a => [a.id, a]));
+
     const result = await prisma.$transaction(async (tx) => {
+      // 3. Criar Diário
       const diario = await tx.diario.create({
         data: {
           date: new Date(date),
-          weatherMorning,
-          weatherAfternoon,
-          weatherNight,
-          notes,
-          ocorrencias,
-          equipamentos,
-          obraId,
+          weatherMorning, weatherAfternoon, weatherNight,
+          notes, ocorrencias, equipamentos, obraId,
         }
       });
 
-      const efetivoMap = new Map();
+      // 4. Efetivos em paralelo
+      const efetivoMap = new Map<number, string>();
       if (efetivos && Array.isArray(efetivos)) {
-        for (let i = 0; i < efetivos.length; i++) {
-          const ef = efetivos[i];
-          const createdEfetivo = await tx.efetivo.create({
-            data: {
-              role: ef.role,
-              count: Number(ef.count),
-              diarioId: diario.id
-            }
-          });
-          efetivoMap.set(i, createdEfetivo.id);
-        }
+        const createdEfetivos = await Promise.all(
+          efetivos.map((ef, i) => tx.efetivo.create({
+            data: { role: ef.role, count: Number(ef.count), diarioId: diario.id }
+          }).then(r => ({ i, id: r.id })))
+        );
+        createdEfetivos.forEach(({ i, id }) => efetivoMap.set(i, id));
       }
 
+      const auditData: any[] = [];
+      const apontamentoData: any[] = [];
+
+      // 5. Processar Atividades
       if (atividades && Array.isArray(atividades)) {
         for (const act of atividades) {
-          // Busca dados atuais da atividade para cálculo acumulado
-          const currentAtiv = await tx.atividade.findUnique({
-            where: { id: act.atividadeId },
-            select: { progress: true, quantidadeTotal: true }
-          });
-
-          if (!currentAtiv) continue;
+          const current = currentAtivMap.get(act.atividadeId);
+          if (!current) continue;
 
           const qtyToday = Number(act.quantidadeRealizada) || 0;
-          const totalQty = currentAtiv.quantidadeTotal || 100;
+          const totalQty = current.quantidadeTotal || 100;
 
-          // Calcula progresso acumulado pela quantidade realizada hoje
-          // Fallback: usa progresso direto informado pelo campo legado
           let calculatedProgress: number;
           if (qtyToday > 0) {
-            const currentQty = (currentAtiv.progress / 100) * totalQty;
+            const currentQty = (current.progress / 100) * totalQty;
             calculatedProgress = Math.min(100, ((currentQty + qtyToday) / totalQty) * 100);
           } else {
             calculatedProgress = Number(act.progress) || 0;
           }
 
-          // Regra anti-regressão: progresso da atividade só avança, nunca recua.
-          // Impede que um RDO com dado parcial distorça o histórico e os KPIs.
-          const newProgress = Math.max(calculatedProgress, currentAtiv.progress);
+          const newProgress = Math.max(calculatedProgress, current.progress);
 
-          // AUDIT LOG (P1 Hardening)
-          if (newProgress > currentAtiv.progress || qtyToday > 0) {
-            await tx.measurementAudit.create({
-              data: {
-                atividadeId: act.atividadeId,
-                obraId: obraId,
-                userId: (await prisma.user.findFirst({ where: { workspaceId } }))?.id || '', // Fallback para o dono do workspace
-                oldProgress: currentAtiv.progress,
-                newProgress: newProgress,
-                oldQuantity: currentAtiv.quantidadeRealizada,
-                newQuantity: (currentAtiv.quantidadeRealizada || 0) + qtyToday,
-                source: "RDO"
-              }
+          if (newProgress > current.progress || qtyToday > 0) {
+            auditData.push({
+              atividadeId: act.atividadeId,
+              obraId,
+              userId,
+              oldProgress: current.progress,
+              newProgress,
+              oldQuantity: current.quantidadeRealizada || 0,
+              newQuantity: (current.quantidadeRealizada || 0) + qtyToday,
+              source: "RDO"
             });
           }
 
-          const diarioAtividade = await tx.diarioAtividade.create({
+          const createdDA = await tx.diarioAtividade.create({
             data: {
               diarioId: diario.id,
               atividadeId: act.atividadeId,
@@ -162,8 +157,7 @@ export async function POST(request: Request) {
             }
           });
 
-          // Só escreve na atividade mestre se houve avanço real ou mudança de status
-          if (newProgress > currentAtiv.progress || act.status) {
+          if (newProgress > current.progress || act.status) {
             await tx.atividade.update({
               where: { id: act.atividadeId },
               data: {
@@ -174,38 +168,27 @@ export async function POST(request: Request) {
           }
 
           if (act.efetivoIndices && Array.isArray(act.efetivoIndices)) {
-            for (const index of act.efetivoIndices) {
-              const efetivoId = efetivoMap.get(index);
-              if (efetivoId) {
-                await tx.apontamento.create({
-                  data: {
-                    efetivoId,
-                    diarioAtividadeId: diarioAtividade.id
-                  }
-                });
+            for (const idx of act.efetivoIndices) {
+              const efId = efetivoMap.get(idx);
+              if (efId) {
+                apontamentoData.push({ efetivoId: efId, diarioAtividadeId: createdDA.id });
               }
             }
           }
         }
       }
 
+      // 6. Batched Final Writes
+      if (auditData.length > 0) await tx.measurementAudit.createMany({ data: auditData });
+      if (apontamentoData.length > 0) await tx.apontamento.createMany({ data: apontamentoData });
       if (fotos && Array.isArray(fotos)) {
-        for (const foto of fotos) {
-          await tx.foto.create({
-            data: {
-              url: foto.url,
-              caption: foto.caption,
-              diarioId: diario.id
-            }
-          });
-        }
+        await tx.foto.createMany({
+          data: fotos.map(f => ({ url: f.url, caption: f.caption, diarioId: diario.id }))
+        });
       }
 
       return diario;
-    }, {
-      maxWait: 10000,
-      timeout: 120000
-    });
+    }, { maxWait: 5000, timeout: 30000 });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

@@ -31,6 +31,8 @@ export const diarioSchema = z.object({
   weatherAfternoon: z.string().optional().nullable(),
   weatherNight: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  ocorrencias: z.string().optional().nullable(),
+  equipamentos: z.string().optional().nullable(),
   efetivos: z.array(z.object({
     role: z.string(),
     count: z.number().min(0)
@@ -42,5 +44,10 @@ export const diarioSchema = z.object({
     status: z.string(),
     quantidadeTrabalhadores: z.number().optional().default(0),
     fotosAtividade: z.array(z.string()).optional(),
+    efetivoIndices: z.array(z.number()).optional(),
+  })).optional(),
+  fotos: z.array(z.object({
+    url: z.string(),
+    caption: z.string().optional().nullable(),
   })).optional(),
 });

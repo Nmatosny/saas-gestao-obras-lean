@@ -98,7 +98,9 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     // Optimistic Update
     mutateState(prev => ({
       ...prev,
-      atividades: prev.atividades.map(a => a.id === id ? { ...a, status } : a)
+      atividades: prev.atividades.map(a =>
+        a.id === id ? { ...a, status: status as Atividade['status'] } : a
+      ),
     }))
 
     await fetch('/api/atividades/status', {

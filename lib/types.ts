@@ -26,13 +26,15 @@ export interface Atividade {
   endDate: string | Date;
   progress: number;
   weight: number;
-  status: 'planejado' | 'em_andamento' | 'concluido' | 'impedido';
+  status: 'planejado' | 'programado' | 'em_andamento' | 'concluido' | 'impedido';
   scheduled?: boolean;
   service?: Service;
   location?: Location;
   quantidadeTotal?: number;
   unidadeMedida?: string;
   quantidadeRealizada?: number;
+  locationId?: string;
+  serviceId?: string;
   isCritical?: boolean;
   causaNaoCumprimento?: string;
   impactoDescricao?: string;

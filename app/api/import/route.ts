@@ -133,60 +133,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nenhuma atividade válida encontrada no arquivo.' }, { status: 400 });
     }
 
+    // ── Pre-compute unique names before entering the transaction ──────────────
     const result = await prisma.$transaction(async (tx) => {
+      // 1. Snapshot da versão do cronograma
       const versao = await tx.cronogramaVersao.create({
-        data: {
-          nome: file.name,
-          obraId
-        }
+        data: { nome: file.name, obraId }
       });
 
-      const existingLocations = await tx.location.findMany({ where: { obraId } });
-      const existingServices = await tx.service.findMany({ where: { obraId } });
-      
-      const locMap = new Map(existingLocations.map(l => [l.name.toLowerCase(), l.id]));
-      const servMap = new Map(existingServices.map(s => [s.name.toLowerCase(), s.id]));
+      // 2. Mapear Locais e Serviços únicos no arquivo
+      const uniqueLocNames = Array.from(new Set(activitiesToCreate.map(a => a.local.trim())));
+      const uniqueServNames = Array.from(new Set(activitiesToCreate.map(a => a.servico.trim())));
 
+      // 3. Garantir que Locais e Serviços existam (Bulk)
+      await tx.location.createMany({
+        data: uniqueLocNames.map(name => ({ name, obraId })),
+        skipDuplicates: true
+      });
 
+      await tx.service.createMany({
+        data: uniqueServNames.map(name => ({ name, color: '#3b82f6', obraId })),
+        skipDuplicates: true
+      });
 
-      for (const act of activitiesToCreate) {
-        const locNameLower = act.local.toLowerCase();
-        let locationId = locMap.get(locNameLower);
-        if (!locationId) {
-          const newLoc = await tx.location.create({
-            data: { name: act.local, obraId }
-          });
-          locationId = newLoc.id;
-          locMap.set(locNameLower, locationId);
-        }
+      // 4. Buscar IDs finais (agora que todos existem)
+      const [locations, services] = await Promise.all([
+        tx.location.findMany({ where: { obraId } }),
+        tx.service.findMany({ where: { obraId } })
+      ]);
 
-        const servNameLower = act.servico.toLowerCase();
-        let serviceId = servMap.get(servNameLower);
-        if (!serviceId) {
-          const newServ = await tx.service.create({
-            data: { name: act.servico, color: '#3b82f6', obraId }
-          });
-          serviceId = newServ.id;
-          servMap.set(servNameLower, serviceId);
-        }
+      const locMap = new Map(locations.map(l => [l.name.toLowerCase().trim(), l.id]));
+      const servMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s.id]));
 
-        await tx.atividade.create({
-          data: {
-            name: `${act.servico} - ${act.local}`,
-            startDate: act.inicio,
-            endDate: act.fim,
-            budgetedCost: act.custo,
-            locationId,
-            serviceId,
-            obraId
-          }
-        });
-      }
-      
+      // 5. Criar Atividades em Massa
+      const atividadesData = activitiesToCreate.map(act => ({
+        name: `${act.servico} - ${act.local}`,
+        startDate: act.inicio,
+        endDate: act.fim,
+        budgetedCost: act.custo,
+        locationId: locMap.get(act.local.toLowerCase().trim())!,
+        serviceId: servMap.get(act.servico.toLowerCase().trim())!,
+        obraId
+      }));
+
+      await tx.atividade.createMany({
+        data: atividadesData
+      });
+
       return { count: activitiesToCreate.length };
     }, {
       maxWait: 10000,
-      timeout: 120000
+      timeout: 30000
     });
 
     return NextResponse.json({ message: 'Importação concluída com sucesso', atividadesImportadas: result.count }, { status: 201 });
