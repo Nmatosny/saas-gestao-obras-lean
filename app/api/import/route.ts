@@ -134,14 +134,9 @@ export async function POST(request: Request) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      await tx.cronogramaVersao.updateMany({
-        where: { obraId, ativa: true },
-        data: { ativa: false }
-      });
       const versao = await tx.cronogramaVersao.create({
         data: {
           nome: file.name,
-          ativa: true,
           obraId
         }
       });
