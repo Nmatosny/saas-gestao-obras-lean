@@ -51,23 +51,16 @@ export async function POST(request: Request) {
     const body = diarioSchema.parse(json);
     const { 
       date, 
-      weatherMorning, 
-      weatherAfternoon, 
-      weatherNight, 
-      notes, 
-      obraId, 
-      efetivos, 
-      atividades,
-      ocorrencias,
-      equipamentos,
-      fotos
+      weatherMorning, weatherAfternoon, weatherNight, 
+      notes, obraId, efetivos, atividades,
+      ocorrencias, equipamentos, fotos
     } = body;
 
     if (!date || !obraId) {
       return NextResponse.json({ error: 'Data e obraId são obrigatórios' }, { status: 400 });
     }
 
-    // TENANT GUARD
+    // 1. TENANT GUARD & Duplicidade
     const isOwner = await validateObraOwnership(obraId, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
@@ -78,19 +71,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Já existe um RDO para esta data' }, { status: 409 });
     }
 
-    // 1. Resolver userId antes da transaction
+    // 2. Pre-fetch inicial fora da transação
     const user = await prisma.user.findFirst({ where: { workspaceId } });
     const userId = user?.id || '';
 
-    // 2. Pre-carregar estados das atividades
     const atividadeIds = (atividades || []).map(a => a.atividadeId);
     const currentAtividades = await prisma.atividade.findMany({
       where: { id: { in: atividadeIds } }
     });
     const currentAtivMap = new Map(currentAtividades.map(a => [a.id, a]));
 
+    // 3. Iniciar Transação Otimizada
     const result = await prisma.$transaction(async (tx) => {
-      // 3. Criar Diário
       const diario = await tx.diario.create({
         data: {
           date: new Date(date),
@@ -99,7 +91,7 @@ export async function POST(request: Request) {
         }
       });
 
-      // 4. Efetivos em paralelo
+      // Efetivos em paralelo
       const efetivoMap = new Map<number, string>();
       if (efetivos && Array.isArray(efetivos)) {
         const createdEfetivos = await Promise.all(
@@ -112,31 +104,30 @@ export async function POST(request: Request) {
 
       const auditData: any[] = [];
       const apontamentoData: any[] = [];
-
-      // 5. Processar Atividades
+      
+      // Criar DiarioAtividades e atualizar Atividades Mestre em paralelo
       if (atividades && Array.isArray(atividades)) {
-        for (const act of atividades) {
+        const activityPromises = atividades.map(async (act) => {
           const current = currentAtivMap.get(act.atividadeId);
-          if (!current) continue;
+          if (!current) return null;
 
           const qtyToday = Number(act.quantidadeRealizada) || 0;
           const totalQty = current.quantidadeTotal || 100;
-
-          let calculatedProgress: number;
+          
+          let calcProgress: number;
           if (qtyToday > 0) {
             const currentQty = (current.progress / 100) * totalQty;
-            calculatedProgress = Math.min(100, ((currentQty + qtyToday) / totalQty) * 100);
+            calcProgress = Math.min(100, ((currentQty + qtyToday) / totalQty) * 100);
           } else {
-            calculatedProgress = Number(act.progress) || 0;
+            calcProgress = Number(act.progress) || 0;
           }
+          const newProgress = Math.max(calcProgress, current.progress);
 
-          const newProgress = Math.max(calculatedProgress, current.progress);
-
+          // Preparar auditoria
           if (newProgress > current.progress || qtyToday > 0) {
             auditData.push({
               atividadeId: act.atividadeId,
-              obraId,
-              userId,
+              obraId, userId,
               oldProgress: current.progress,
               newProgress,
               oldQuantity: current.quantidadeRealizada || 0,
@@ -145,6 +136,7 @@ export async function POST(request: Request) {
             });
           }
 
+          // Criar registro da atividade no Diário
           const createdDA = await tx.diarioAtividade.create({
             data: {
               diarioId: diario.id,
@@ -157,6 +149,7 @@ export async function POST(request: Request) {
             }
           });
 
+          // Atualizar Atividade Mestra
           if (newProgress > current.progress || act.status) {
             await tx.atividade.update({
               where: { id: act.atividadeId },
@@ -167,32 +160,42 @@ export async function POST(request: Request) {
             });
           }
 
+          // Vincular apontamentos (mão de obra)
           if (act.efetivoIndices && Array.isArray(act.efetivoIndices)) {
-            for (const idx of act.efetivoIndices) {
+            act.efetivoIndices.forEach(idx => {
               const efId = efetivoMap.get(idx);
-              if (efId) {
-                apontamentoData.push({ efetivoId: efId, diarioAtividadeId: createdDA.id });
-              }
-            }
+              if (efId) apontamentoData.push({ efetivoId: efId, diarioAtividadeId: createdDA.id });
+            });
           }
-        }
+          
+          return createdDA;
+        });
+
+        await Promise.all(activityPromises);
       }
 
-      // 6. Batched Final Writes
-      if (auditData.length > 0) await tx.measurementAudit.createMany({ data: auditData });
-      if (apontamentoData.length > 0) await tx.apontamento.createMany({ data: apontamentoData });
+      // Final batch writes
+      const finalTasks = [];
+      if (auditData.length > 0) finalTasks.push(tx.measurementAudit.createMany({ data: auditData }));
+      if (apontamentoData.length > 0) finalTasks.push(tx.apontamento.createMany({ data: apontamentoData }));
       if (fotos && Array.isArray(fotos)) {
-        await tx.foto.createMany({
+        finalTasks.push(tx.foto.createMany({
           data: fotos.map(f => ({ url: f.url, caption: f.caption, diarioId: diario.id }))
-        });
+        }));
       }
+
+      if (finalTasks.length > 0) await Promise.all(finalTasks);
 
       return diario;
-    }, { maxWait: 5000, timeout: 30000 });
+    }, {
+      maxWait: 5000,
+      timeout: 15000 // Limite de segurança para não prender o banco se a Vercel matar o processo
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Erro ao criar diário completo' }, { status: 500 });
+    console.error('Erro RDO:', error);
+    return NextResponse.json({ error: 'Erro ao processar medição' }, { status: 500 });
   }
 }
+
