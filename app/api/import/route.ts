@@ -147,14 +147,14 @@ export async function POST(request: Request) {
       const locMap = new Map(existingLocations.map(l => [l.name.toLowerCase(), l.id]));
       const servMap = new Map(existingServices.map(s => [s.name.toLowerCase(), s.id]));
 
-      let locOrderCounter = existingLocations.length;
+
 
       for (const act of activitiesToCreate) {
         const locNameLower = act.local.toLowerCase();
         let locationId = locMap.get(locNameLower);
         if (!locationId) {
           const newLoc = await tx.location.create({
-            data: { name: act.local, order: locOrderCounter++, obraId }
+            data: { name: act.local, obraId }
           });
           locationId = newLoc.id;
           locMap.set(locNameLower, locationId);
