@@ -46,6 +46,8 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     return view
   }, [aba, view])
 
+  const ativsProgramadas = useMemo(() => atividades.filter(a => a.status && a.status !== 'planejado'), [atividades])
+
   const [showImport, setShowImport] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedDiario, setSelectedDiario] = useState<Diario | null>(null)

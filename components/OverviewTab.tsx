@@ -212,6 +212,8 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
 
   // Lógica de "Próxima Melhor Ação" baseada no estado real
   const nextAction = useMemo(() => {
+    const ativsProgramadas = atividades.filter(a => a.status && a.status !== 'planejado')
+    
     if (atividades.length > 0 && !atividades.some(a => a.locationId)) {
       return { 
         title: 'Vincular Locais', 
@@ -238,7 +240,7 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
       }
     }
     return null
-  }, [atividades, ativsProgramadas, diarios])
+  }, [atividades, diarios])
 
   const critCount = alerts.filter(a => a.severity === 'critico').length
 
