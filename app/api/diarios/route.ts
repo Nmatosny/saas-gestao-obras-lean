@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
 import { diarioSchema } from '@/lib/validations';
 import { randomUUID } from 'crypto';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 
 export async function GET(request: Request) {
   try {
@@ -40,8 +42,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const workspaceId = await getWorkspaceSession();
-    if (!workspaceId) return unauthorizedResponse();
+    const session = await getServerSession(authOptions);
+    const workspaceId = session?.user?.workspaceId;
+    const userId = session?.user?.id;
+
+    if (!workspaceId || !userId) return unauthorizedResponse();
 
     const json = await request.json();
     const body = diarioSchema.parse(json);
@@ -56,7 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Data e obraId são obrigatórios' }, { status: 400 });
     }
 
-    // 1. Bloqueio de duplicidade e Permissão
+    // 1. Permissão e Duplicidade
     const isOwner = await validateObraOwnership(obraId, workspaceId);
     if (!isOwner) return unauthorizedResponse();
 
@@ -67,33 +72,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Já existe um RDO para esta data' }, { status: 409 });
     }
 
-    // 2. Preparação de Dados em Memória (Zero latência)
-    const user = await prisma.user.findFirst({ where: { workspaceId } });
-    const userId = user?.id || '';
-
+    // 2. Preparação de Dados (Bulk Preparation)
     const atividadeIds = (atividades || []).map(a => a.atividadeId);
     const currentAtividades = await prisma.atividade.findMany({
       where: { id: { in: atividadeIds } }
     });
     const currentAtivMap = new Map(currentAtividades.map(a => [a.id, a]));
 
-    // Gerar IDs antecipadamente para vinculação manual
     const diarioId = randomUUID();
-    
-    // Preparar Efetivos
     const efetivoRecords = (efetivos || []).map((ef, idx) => ({
       id: randomUUID(),
       role: ef.role,
       count: Number(ef.count),
       diarioId,
-      tempIdx: idx // para vincular aos apontamentos
+      tempIdx: idx
     }));
     const efetivoIdxMap = new Map(efetivoRecords.map(r => [r.tempIdx, r.id]));
 
     const diarioAtividadeRecords: any[] = [];
     const apontamentoRecords: any[] = [];
     const auditRecords: any[] = [];
-    const updateAtividadePromises: any[] = [];
 
     if (atividades && Array.isArray(atividades)) {
       for (const act of atividades) {
@@ -113,7 +111,6 @@ export async function POST(request: Request) {
         }
         const newProgress = Math.max(calcProgress, current.progress);
 
-        // Registro da atividade no RDO
         diarioAtividadeRecords.push({
           id: daId,
           diarioId,
@@ -125,7 +122,6 @@ export async function POST(request: Request) {
           fotosAtividade: act.fotosAtividade ? JSON.stringify(act.fotosAtividade) : null,
         });
 
-        // Auditoria
         if (newProgress > current.progress || qtyToday > 0) {
           auditRecords.push({
             id: randomUUID(),
@@ -139,7 +135,6 @@ export async function POST(request: Request) {
           });
         }
 
-        // Apontamentos de Mão de Obra
         if (act.efetivoIndices && Array.isArray(act.efetivoIndices)) {
           act.efetivoIndices.forEach(idx => {
             const efId = efetivoIdxMap.get(idx);
@@ -155,9 +150,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Execução Atômica em Massa
+    // 3. Execução Atômica
     const result = await prisma.$transaction(async (tx) => {
-      // Cria Diário
       const diario = await tx.diario.create({
         data: {
           id: diarioId,
@@ -167,11 +161,8 @@ export async function POST(request: Request) {
         }
       });
 
-      // Salva tudo em blocos (createMany é extremamente rápido)
       if (efetivoRecords.length > 0) {
-        await tx.efetivo.createMany({ 
-          data: efetivoRecords.map(({ tempIdx, ...r }) => r) 
-        });
+        await tx.efetivo.createMany({ data: efetivoRecords.map(({ tempIdx, ...r }) => r) });
       }
       if (diarioAtividadeRecords.length > 0) {
         await tx.diarioAtividade.createMany({ data: diarioAtividadeRecords });
@@ -184,16 +175,10 @@ export async function POST(request: Request) {
       }
       if (fotos && Array.isArray(fotos)) {
         await tx.foto.createMany({
-          data: fotos.map(f => ({ 
-            id: randomUUID(),
-            url: f.url, 
-            caption: f.caption, 
-            diarioId 
-          }))
+          data: fotos.map(f => ({ id: randomUUID(), url: f.url, caption: f.caption, diarioId }))
         });
       }
 
-      // 4. Atualizar Atividades Mestre (Infelizmente precisa ser individual, mas faremos no fim)
       const updatePromises = diarioAtividadeRecords.map(da => 
         tx.atividade.update({
           where: { id: da.atividadeId },
@@ -206,17 +191,13 @@ export async function POST(request: Request) {
       );
       
       await Promise.all(updatePromises);
-
       return diario;
-    }, {
-      maxWait: 5000,
-      timeout: 20000 
-    });
+    }, { maxWait: 5000, timeout: 20000 });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error('Erro RDO Crítico:', error);
-    return NextResponse.json({ error: 'Falha crítica ao salvar medição. Verifique os dados e tente novamente.' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao processar medição: verifique se todos os campos obrigatórios estão preenchidos.' }, { status: 500 });
   }
 }
 
