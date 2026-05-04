@@ -14,7 +14,6 @@ export async function PATCH(request: Request) {
     const result = await prisma.atividade.updateMany({
       where: { id: { in: ids } },
       data: {
-        scheduled: data.scheduled ?? true,
         status: data.status || 'programado'
       }
     });
@@ -68,12 +67,10 @@ export async function POST(request: Request) {
             name: `${service.name} - ${loc.name}`,
             startDate: inicio,
             endDate: fim,
-            weight: peso ? Number(peso) : 1,
             obraId,
             locationId: loc.id,
             serviceId: service.id,
             status: 'programado',
-            scheduled: true,
           },
           include: { location: true, service: true }
         });

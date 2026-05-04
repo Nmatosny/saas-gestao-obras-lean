@@ -28,8 +28,8 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
   const [loading, setLoading] = useState(false)
 
   const ativsDaVersao = useMemo(() => {
-    if (selectedVersao === 'mestre') return atividades.filter(a => !a.versaoId && !a.scheduled)
-    return atividades.filter(a => a.versaoId === selectedVersao && !a.scheduled)
+    if (selectedVersao === 'mestre') return atividades.filter(a => !a.versaoId && (a.status === 'planejado' || !a.status))
+    return atividades.filter(a => a.versaoId === selectedVersao && (a.status === 'planejado' || !a.status))
   }, [atividades, selectedVersao])
 
   const groupedByLocation = ativsDaVersao.reduce((acc, ativ) => {
@@ -64,8 +64,8 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          ids: Array.from(selectedIds), 
-          data: { scheduled: true, status: 'programado' } 
+          ids: Array.from(selectedIds),
+          data: { status: 'programado' } 
         })
       })
       
