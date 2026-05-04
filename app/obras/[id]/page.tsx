@@ -160,7 +160,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     </div>
   )
 
-  const ativsProgramadas = atividades.filter(a => a.scheduled)
+
   const ativsEmAndamento = atividades.filter(
     a => a.status === 'em_andamento' || a.status === 'programado'
   )
