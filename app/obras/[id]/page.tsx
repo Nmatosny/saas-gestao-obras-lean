@@ -4,7 +4,7 @@ import { useState, use, useCallback, useMemo } from 'react'
 import {
   Layers, TrendingUp, FileCheck, Rocket,
   Share2, FileText, AlertCircle, Package,
-  LayoutDashboard, Check
+  LayoutDashboard, Check, Calendar
 } from 'lucide-react'
 import KanbanTarefas from '@/components/KanbanTarefas'
 import CronogramaGantt from '@/components/CronogramaGantt'
