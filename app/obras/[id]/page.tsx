@@ -89,6 +89,11 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
     refresh()
   }, [obraId, refresh])
 
+  const handleSetAba = useCallback((novaAba: string, novaSubAba?: string) => {
+    setAba(novaAba)
+    if (novaSubAba) setSubAba(novaSubAba)
+  }, [])
+
   const handleImported = useCallback(() => {
     refresh()
     handleSetAba('planejamento', 'locais')
@@ -138,11 +143,6 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   const currentStep = currentStepIdx !== -1
     ? steps[currentStepIdx]
     : { label: 'Setup Concluído', info: 'A inteligência de dados está ativa.' }
-
-  const handleSetAba = useCallback((novaAba: string, novaSubAba?: string) => {
-    setAba(novaAba)
-    if (novaSubAba) setSubAba(novaSubAba)
-  }, [])
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-slate-50/30 space-y-10 pb-32">
