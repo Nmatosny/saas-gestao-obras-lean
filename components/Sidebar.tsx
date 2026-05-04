@@ -6,19 +6,22 @@ import { signOut, useSession } from 'next-auth/react'
 import { 
   LayoutDashboard, 
   HardHat, 
-  BarChart3, 
-  Users2, 
   LogOut,
   Building2,
-  FileText
+  Calendar,
+  Hammer,
+  BarChart3,
+  ClipboardList,
+  Settings
 } from 'lucide-react'
 
 const MENU_ITEMS = [
-  { id: 'dashboard', label: 'Torre de Controle', icon: LayoutDashboard, href: '/' },
-  { id: 'obras',     label: 'Obras & Engenharia', icon: Building2,      href: '/obras' },
-  { id: 'insights',  label: 'Análise de Avanço',  icon: BarChart3,      href: '/insights' },
-  { id: 'equipe',    label: 'Recursos & Equipes', icon: Users2,         href: '/equipe' },
-  { id: 'docs',      label: 'Documentos Técnicos', icon: FileText,       href: '/docs' },
+  { id: 'obras',         label: 'Obras',         icon: Building2,     href: '/obras' },
+  { id: 'planejamento',  label: 'Planejamento',  icon: Calendar,      href: '/planejamento' },
+  { id: 'execucao',      label: 'Execução',      icon: Hammer,        href: '/execucao' },
+  { id: 'indicadores',   label: 'Indicadores',   icon: BarChart3,     href: '/indicadores' },
+  { id: 'medicoes',      label: 'Medições',      icon: ClipboardList, href: '/medicoes' },
+  { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: '/configuracoes' },
 ]
 
 export default function Sidebar() {
