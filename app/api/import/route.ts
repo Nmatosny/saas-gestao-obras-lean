@@ -175,8 +175,7 @@ export async function POST(request: Request) {
             name: `${act.servico} - ${act.local}`,
             startDate: act.inicio,
             endDate: act.fim,
-            cost: act.custo,
-            weight: act.peso,
+            budgetedCost: act.custo,
             locationId,
             serviceId,
             obraId
