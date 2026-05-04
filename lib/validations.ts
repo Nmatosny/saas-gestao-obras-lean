@@ -19,7 +19,7 @@ export const atividadeSchema = z.object({
   scheduled: z.boolean().optional(),
   causaNaoCumprimento: z.string().optional().nullable(),
   impactoDescricao: z.string().optional().nullable(),
-  custoOrcado: z.number().optional(),
+  budgetedCost: z.number().optional(),
 });
 
 export const diarioSchema = z.object({

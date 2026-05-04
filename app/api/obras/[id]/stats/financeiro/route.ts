@@ -12,9 +12,8 @@ export async function GET(
       where: { obraId },
       select: {
         id: true,
-        custoOrcado: true,
+        budgetedCost: true,
         progress: true,
-        plannedProgress: true,
         startDate: true,
         endDate: true,
         baselineInicio: true,
@@ -47,7 +46,7 @@ export async function GET(
 
     let bac = 0;
     const activitiesWithCost = atividades.map(a => {
-      let custo = a.custoOrcado || 0;
+      let custo = a.budgetedCost || 0;
       if (custo === 0 && a.service?.custoEstimado) {
         // Distribute service budget evenly across its activities
         const count = servicoCounts[a.service.id] || 1;

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         location: true,
         service: true,
         restricoes: {
-          select: { id: true, resolvido: true }
+          select: { id: true, status: true }
         }
       },
       orderBy: { startDate: 'asc' }
@@ -70,7 +70,7 @@ export async function PATCH(request: Request) {
     if (data.progress !== undefined) updateData.progress = Number(data.progress);
     if (data.causaNaoCumprimento !== undefined) updateData.causaNaoCumprimento = data.causaNaoCumprimento || null;
     if (data.impactoDescricao !== undefined) updateData.impactoDescricao = data.impactoDescricao || null;
-    if (data.custoOrcado !== undefined) updateData.custoOrcado = Number(data.custoOrcado);
+    if (data.budgetedCost !== undefined) updateData.budgetedCost = Number(data.budgetedCost);
 
     await prisma.atividade.update({
       where: { id },
