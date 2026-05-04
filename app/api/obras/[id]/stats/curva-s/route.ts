@@ -38,40 +38,66 @@ export async function GET(
       
       let weightedPlanned = 0;
       let totalWeight = 0;
+      let pv = 0;
 
       atividades.forEach(a => {
         const weight = a.weight || 1;
         totalWeight += weight;
+        const budgeted = a.budgetedCost || 0;
         const p = MetricsEngine.calculatePlannedProgress(new Date(a.startDate), new Date(a.endDate), currentPointDate);
         weightedPlanned += (p * weight);
+        pv += (p / 100) * budgeted; // p is usually 0 to 100 from this engine? Wait, calculatePlannedProgress usually returns 0 to 100. Let me check the metric engine. If it returns 0-100, we divide by 100.
       });
 
-      const planejado = Math.round(weightedPlanned / totalWeight);
+      // Assuming calculatePlannedProgress returns 0-100 based on standard conventions in our app. If not, it returns 0-1. Let's look at how it calculates the average.
+      // Wait, in previous lines: const planejado = Math.round(weightedPlanned / totalWeight); This implies `p` is 0-100.
       
-      // Realizado só até HOJE
+      const planejado = totalWeight > 0 ? Math.round(weightedPlanned / totalWeight) : 0;
+      
       let realizado: number | null = null;
+      let ev: number | null = null;
+      let ac: number | null = null;
+
       if (currentPointDate <= today) {
-         // Simplificação: No MVP real, buscaríamos o histórico de RDO. 
-         // Aqui simulamos a curva atual baseada no progresso atual e linearidade proporcional.
-         // Mas para o gráfico parecer correto, limitamos ao progresso global da obra hoje.
          let weightedReal = 0;
+         let currentEv = 0;
+         let currentAc = 0;
+
          atividades.forEach(a => {
             const weight = a.weight || 1;
-            // Se o ponto é hoje, usa o progresso real. Se é passado, interpola.
+            const budgeted = a.budgetedCost || 0;
+            const actual = a.actualCost || 0;
+            
+            // Realizado físico
             const realAtPoint = (currentPointDate.getTime() >= today.getTime()) ? a.progress : (a.progress * (i/10));
             weightedReal += (realAtPoint * weight);
+            
+            // Valor Agregado (EV) = % Físico Real * Orçamento
+            currentEv += (realAtPoint / 100) * budgeted;
+
+            // Custo Real (AC)
+            // Distribuído linearmente com base no progresso para o gráfico
+            currentAc += (realAtPoint / 100) * actual;
          });
-         realizado = Math.round(weightedReal / totalWeight);
+         realizado = totalWeight > 0 ? Math.round(weightedReal / totalWeight) : 0;
+         ev = currentEv;
+         ac = currentAc;
       }
 
       pontos.push({
         name: currentPointDate.toLocaleDateString('pt-BR', { month: 'short', day: '2-digit' }),
         planejado,
-        realizado
+        realizado,
+        pv,
+        ev,
+        ac
       });
     }
 
-    return NextResponse.json(pontos);
+    return NextResponse.json({
+      pontos,
+      totalBudget: atividades.reduce((acc, a) => acc + (a.budgetedCost || 0), 0)
+    });
 
   } catch (error) {
     return NextResponse.json({ error: 'Erro na Curva S' }, { status: 500 });

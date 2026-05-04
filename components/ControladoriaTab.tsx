@@ -7,8 +7,10 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, AlertTriangle, Target, Calendar, Clock, Zap, ArrowRight } from 'lucide-react'
 
+type CurvaSPoint = { name: string; planejado: number; realizado: number | null; pv: number; ev: number | null; ac: number | null; }
+
+// ... existing types
 type CncData = { causa: string; count: number; percentual: number }
-type CurvaSPoint = { name: string; planejado: number; realizado: number | null }
 type ForecastServico = { name: string; color: string; progresso: number; planned: string; projetada: string | null; delta: number }
 type ForecastData = {
   conclusaoPlanejada: string | null
@@ -29,10 +31,12 @@ const COLORS_PALETTE = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '
 
 export default function ControladoriaTab({ obraId }: { obraId: string }) {
   const [curvaS, setCurvaS] = useState<CurvaSPoint[]>([])
+  const [totalBudget, setTotalBudget] = useState(0)
   const [cnc, setCnc] = useState<{ total: number; data: CncData[] } | null>(null)
   const [forecast, setForecast] = useState<ForecastData | null>(null)
   const [deps, setDeps] = useState<Dependencia[]>([])
   const [loading, setLoading] = useState(true)
+  const [chartType, setChartType] = useState<'fisico' | 'financeiro'>('fisico')
 
   useEffect(() => {
     const init = async () => {
@@ -44,7 +48,12 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
           fetch(`/api/obras/${obraId}/stats/forecast`).then(r => r.json()),
           fetch(`/api/dependencias?obraId=${obraId}`).then(r => r.json()),
         ])
-        if (Array.isArray(cs)) setCurvaS(cs)
+        if (cs?.pontos) {
+          setCurvaS(cs.pontos)
+          setTotalBudget(cs.totalBudget || 0)
+        } else if (Array.isArray(cs)) {
+          setCurvaS(cs)
+        }
         if (cn?.data) setCnc(cn)
         if (fc?.conclusaoPlanejada !== undefined) setForecast(fc)
         if (Array.isArray(dp)) setDeps(dp)
@@ -136,18 +145,61 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
 
         {/* Curva S */}
         <div className="xl:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-10">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-               <Target className="w-5 h-5 text-blue-600" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                 <Target className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">Curva S de Avanço</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                  {chartType === 'fisico' ? 'Planejado × Realizado Acumulado (%)' : 'Orçado × Agregado × Realizado (R$)'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight">Curva S de Avanço</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Planejado × Realizado Acumulado</p>
+            
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <button 
+                onClick={() => setChartType('fisico')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartType === 'fisico' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Físico (%)
+              </button>
+              <button 
+                onClick={() => setChartType('financeiro')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartType === 'financeiro' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Financeiro (R$)
+              </button>
             </div>
           </div>
+
+          {chartType === 'financeiro' && totalBudget > 0 && (
+            <div className="grid grid-cols-3 gap-4 mb-8">
+               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Orçamento Total (BAC)</p>
+                  <p className="text-lg font-black text-slate-700">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalBudget)}
+                  </p>
+               </div>
+               <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Valor Agregado Atual (EV)</p>
+                  <p className="text-lg font-black text-emerald-700">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(curvaS[curvaS.length - 1]?.ev || 0)}
+                  </p>
+               </div>
+               <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Custo Real (AC)</p>
+                  <p className="text-lg font-black text-blue-700">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(curvaS[curvaS.length - 1]?.ac || 0)}
+                  </p>
+               </div>
+            </div>
+          )}
+
           {curvaS.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={curvaS} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <AreaChart data={curvaS} margin={{ top: 4, right: 4, left: chartType === 'financeiro' ? 20 : -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradPlan" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1} />
@@ -157,14 +209,47 @@ export default function ControladoriaTab({ obraId }: { obraId: string }) {
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
+                  <linearGradient id="gradEv" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} unit="%" domain={[0, 100]} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: number | string) => v != null ? `${v}%` : '—'} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} />
+                
+                {chartType === 'fisico' ? (
+                  <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} unit="%" domain={[0, 100]} axisLine={false} tickLine={false} />
+                ) : (
+                  <YAxis 
+                    tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => `R$ ${(v / 1000)}k`} 
+                  />
+                )}
+
+                <Tooltip 
+                  formatter={(v: number | string) => {
+                    if (v == null) return '—';
+                    if (chartType === 'fisico') return `${v}%`;
+                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(Number(v));
+                  }} 
+                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 700 }} 
+                />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', paddingTop: 20 }} />
-                <Area type="monotone" dataKey="planejado" name="Previsto" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="url(#gradPlan)" dot={false} />
-                <Area type="monotone" dataKey="realizado" name="Avanço Real" stroke="#3b82f6" strokeWidth={3} fill="url(#gradReal)" dot={false} connectNulls={false} />
+                
+                {chartType === 'fisico' ? (
+                  <>
+                    <Area type="monotone" dataKey="planejado" name="Previsto (%)" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="url(#gradPlan)" dot={false} />
+                    <Area type="monotone" dataKey="realizado" name="Avanço Real (%)" stroke="#3b82f6" strokeWidth={3} fill="url(#gradReal)" dot={false} connectNulls={false} />
+                  </>
+                ) : (
+                  <>
+                    <Area type="monotone" dataKey="pv" name="Orçado (PV)" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="url(#gradPlan)" dot={false} />
+                    <Area type="monotone" dataKey="ev" name="Agregado (EV)" stroke="#10b981" strokeWidth={3} fill="url(#gradEv)" dot={false} connectNulls={false} />
+                    <Area type="monotone" dataKey="ac" name="Custo Real (AC)" stroke="#3b82f6" strokeWidth={2} fill="url(#gradReal)" dot={false} connectNulls={false} />
+                  </>
+                )}
               </AreaChart>
             </ResponsiveContainer>
           ) : (
