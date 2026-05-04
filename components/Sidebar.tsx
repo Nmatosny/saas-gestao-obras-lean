@@ -29,7 +29,7 @@ export default function Sidebar() {
   const currentAba = searchParams.get('aba') || 'overview'
 
   const MENU_ITEMS = isObraRoute ? [
-    { id: 'voltar',        label: '← Voltar para Obras', icon: ArrowLeft, href: '/obras' },
+    { id: 'voltar',        label: '← Voltar para Obras', icon: ArrowLeft, href: '/' },
     { id: 'overview',      label: 'Torre de Controle', icon: LayoutDashboard, href: `/obras/${obraId}?aba=overview`, match: 'overview' },
     { id: 'planejamento',  label: 'Planejamento',  icon: Calendar,      href: `/obras/${obraId}?aba=planejamento`, match: 'planejamento' },
     { id: 'programacao',   label: 'Programação',   icon: Calendar,      href: `/obras/${obraId}?aba=programacao`, match: 'programacao' },
@@ -38,7 +38,7 @@ export default function Sidebar() {
     { id: 'medicoes',      label: 'Medições',      icon: ClipboardList, href: `/obras/${obraId}?aba=gestao`, match: 'gestao' },
     { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: `/obras/${obraId}?aba=configuracoes`, match: 'configuracoes' },
   ] : [
-    { id: 'obras',         label: 'Obras',         icon: Building2,     href: '/obras' },
+    { id: 'obras',         label: 'Obras',         icon: Building2,     href: '/' },
     { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: '/configuracoes' },
   ]
 
