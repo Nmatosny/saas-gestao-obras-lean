@@ -90,8 +90,8 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
       {/* Header */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3"><History className="w-6 h-6 text-blue-500" /> Central de Programação</h2>
-          <p className="text-sm text-slate-400 font-medium mt-1">Selecione as tarefas na lista abaixo para enviar ao Kanban.</p>
+          <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3"><Calendar className="w-6 h-6 text-blue-500" /> Programação Semanal</h2>
+          <p className="text-sm text-slate-400 font-medium mt-1">Defina o pacote de trabalho (Compromisso) da equipe para a próxima semana de execução.</p>
         </div>
         <div className="flex items-center gap-4 bg-slate-50 p-2 pl-6 rounded-2xl border border-slate-100">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cronograma:</span>
@@ -184,8 +184,8 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
                 <Rocket className="w-6 h-6 text-blue-400 fill-blue-400 group-hover:rotate-12 transition-transform" />
               )}
               <div className="text-left">
-                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Criar Programação</p>
-                 <p className="text-sm font-black">{selectedIds.size} tarefas selecionadas <ArrowRight className="w-4 h-4 inline ml-2 group-hover:translate-x-1 transition-transform" /></p>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Firmar Compromisso</p>
+                 <p className="text-sm font-black">{selectedIds.size} atividades para a semana <ArrowRight className="w-4 h-4 inline ml-2 group-hover:translate-x-1 transition-transform" /></p>
               </div>
            </button>
         </div>

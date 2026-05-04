@@ -34,10 +34,10 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   }, [])
 
   const columns = [
-    { id: 'programado', name: 'Fila da Semana', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'em_andamento', name: 'Em Execução', icon: <Clock className="w-4 h-4" /> },
-    { id: 'concluido', name: 'Produção Concluída', icon: <CheckCircle2 className="w-4 h-4" /> },
-    { id: 'impedido', name: 'Com Impedimento', icon: <ShieldAlert className="w-4 h-4 text-red-500" /> },
+    { id: 'programado', name: 'A fazer', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'em_andamento', name: 'Em andamento', icon: <Clock className="w-4 h-4" /> },
+    { id: 'impedido', name: 'Impedido', icon: <ShieldAlert className="w-4 h-4 text-red-500" /> },
+    { id: 'concluido', name: 'Concluído', icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" /> },
   ]
 
   const services = useMemo(() => Array.from(new Set(atividades.map(a => a.service?.name).filter(Boolean))), [atividades])
@@ -65,8 +65,8 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
   }
 
   if (!hasMounted) return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-pulse">
-       {[1,2,3].map(i => <div key={i} className="bg-slate-50 h-[500px] rounded-[2.5rem]" />)}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 animate-pulse">
+       {[1,2,3,4].map(i => <div key={i} className="bg-slate-50 h-[500px] rounded-[2.5rem]" />)}
     </div>
   )
 
@@ -98,7 +98,7 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
          <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
             <input 
-              placeholder="Buscar tarefa..."
+              placeholder="Buscar atividade..."
               className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -106,11 +106,11 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
          </div>
          <div className="flex gap-2 w-full md:w-auto">
             <select className="bg-slate-50 border-none rounded-xl px-4 py-3 text-[10px] font-black uppercase text-slate-700" value={filterService} onChange={e => setFilterService(e.target.value)}>
-               <option value="">Serviços</option>
+               <option value="">Todos os Serviços</option>
                {services.map(s => <option key={s} value={s!}>{s}</option>)}
             </select>
             <select className="bg-slate-50 border-none rounded-xl px-4 py-3 text-[10px] font-black uppercase text-slate-700" value={filterLocation} onChange={e => setFilterLocation(e.target.value)}>
-               <option value="">Locais</option>
+               <option value="">Todos os Locais</option>
                {locations.map(l => <option key={l} value={l!}>{l}</option>)}
             </select>
          </div>
@@ -121,8 +121,8 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
           {columns.map(col => (
             <div key={col.id} className="space-y-4">
               <div className="flex items-center justify-between px-4 mb-2">
-                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">{col.icon} {col.name}</h3>
-                 <span className="text-[10px] font-black text-slate-300">
+                 <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">{col.icon} {col.name}</h3>
+                 <span className="text-[10px] font-black text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
                    {filteredAtivs.filter(a => a.status === col.id).length}
                  </span>
               </div>
@@ -132,13 +132,12 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                   <div 
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`space-y-4 min-h-[600px] p-4 rounded-[2.5rem] border border-dashed transition-colors ${
-                      snapshot.isDraggingOver ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/30 border-slate-100'
+                    className={`space-y-4 min-h-[600px] p-4 rounded-[2rem] border transition-colors ${
+                      snapshot.isDraggingOver ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/50 border-slate-100'
                     }`}
                   >
                     {filteredAtivs.filter(a => a.status === col.id).map((a, index) => {
-                      const diasAtraso = Math.max(0, Math.floor((new Date().getTime() - new Date(a.startDate).getTime()) / (1000 * 60 * 60 * 24)))
-                      const isDelayed = a.status !== 'concluido' && diasAtraso > 0 && a.progress < (a.plannedProgress || 0)
+                      const isDelayed = a.status !== 'concluido' && a.progress < (a.plannedProgress || 0)
 
                       return (
                         <Draggable key={a.id} draggableId={a.id} index={index}>
@@ -147,77 +146,38 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm transition-all hover:shadow-xl relative group ${
+                              className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md relative group cursor-pointer ${
                                 snapshot.isDragging ? 'shadow-2xl ring-4 ring-blue-500/20 scale-105 z-50' : ''
-                              } ${a.isCritical ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-slate-200'}`}
+                              }`}
                               onClick={() => setSelectedTask(a)}
                             >
-                              <div className="flex items-start justify-between mb-4">
-                                 <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                                         a.isCritical ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'
-                                       }`}>
-                                         {a.isCritical ? 'Crítico' : 'Normal'}
-                                       </span>
-                                       {isDelayed && (
-                                         <span className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse">
-                                           {diasAtraso}d Atraso
-                                         </span>
-                                       )}
-                                    </div>
-                                    <h4 className="text-sm font-black text-slate-800 leading-snug group-hover:text-blue-600 transition-colors">{a.name}</h4>
-                                 </div>
-                                 <GripVertical className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />
-                               </div>
-
-                               {a.causaNaoCumprimento && isDelayed && (
-                                 <div className="mb-4 bg-red-50 border border-red-100 p-2 rounded-xl flex items-center gap-2">
-                                    <AlertCircle className="w-3 h-3 text-red-500" />
-                                    <span className="text-[9px] font-black text-red-600 uppercase">Motivo: {a.causaNaoCumprimento}</span>
-                                 </div>
-                               )}
-
-                              <div className="mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100/50">
-                                 <div className="flex items-center gap-2 mb-2">
-                                    <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                    <p className="text-[11px] font-black text-slate-700 truncate" title={a.location?.name || 'Geral'}>{a.location?.name || 'Geral'}</p>
-                                 </div>
-                                 <div className="flex items-center gap-2">
-                                    <Layers className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{a.service?.name || 'Serviço Genérico'}</p>
-                                 </div>
+                              <div className="flex items-start justify-between mb-3">
+                                 <h4 className="text-[13px] font-black text-slate-800 leading-snug pr-4">{a.name}</h4>
+                                 <GripVertical className="w-4 h-4 text-slate-200 shrink-0 group-hover:text-slate-400 transition-colors" />
                               </div>
 
-                              <div className="space-y-3">
-                                 <div className="flex justify-between items-end">
-                                    <div className="flex items-center gap-2">
-                                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${
-                                         a.progress >= a.plannedProgress ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-                                       }`}>
-                                          {Math.round(a.progress)}%
-                                       </div>
-                                       {a.restricoes && a.restricoes.filter(r => !r.resolvido).length > 0 && (
-                                         <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                                             <AlertCircle className="w-3 h-3 text-amber-500" />
-                                             <span className="text-[9px] font-black text-amber-600">{a.restricoes.filter(r => !r.resolvido).length}</span>
-                                         </div>
-                                       )}
+                              <div className="flex items-center gap-2 mb-4">
+                                <span className="bg-slate-50 text-slate-500 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5">
+                                  <Folder className="w-3 h-3" /> {a.location?.name || 'Geral'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-2">
+                                    <div className="w-full bg-slate-100 rounded-full h-1.5 w-16 overflow-hidden">
+                                       <div 
+                                         className={`h-full transition-all duration-500 ${isDelayed ? 'bg-red-500' : 'bg-blue-500'}`} 
+                                         style={{ width: `${Math.round(a.progress)}%` }} 
+                                       />
                                     </div>
-                                    <div className="text-right">
-                                       <p className="text-[8px] font-black text-slate-300 uppercase">Meta Planejada</p>
-                                       <p className="text-[10px] font-bold text-slate-400">{a.plannedProgress}%</p>
-                                    </div>
+                                    <span className="text-[10px] font-black text-slate-600">{Math.round(a.progress)}%</span>
                                  </div>
                                  
-                                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full transition-all duration-1000 ease-out ${
-                                        a.progress >= (a.plannedProgress || 0) ? 'bg-emerald-500' : 'bg-red-500'
-                                      }`}
-                                      style={{ width: `${a.progress}%` }}
-                                    />
-                                 </div>
+                                 {a.causaNaoCumprimento && (
+                                   <span className="text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-md uppercase border border-red-100">
+                                     Com CNC
+                                   </span>
+                                 )}
                               </div>
                             </div>
                           )}
