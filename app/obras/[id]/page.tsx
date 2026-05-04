@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, use, useCallback, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Layers, TrendingUp, FileCheck, Rocket,
   Share2, FileText, AlertCircle, Package,
@@ -30,11 +31,14 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   const { id: obraId } = use(params)
 
   const {
-    obra, atividades, versoes, diarios, dependencias,
+    obra, atividades, versoes, diarios, dependencias, alerts, stats,
     hasBaseline, loading, error, refresh
   } = useObraData(obraId)
 
-  const [aba, setAba] = useState('overview')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const aba = searchParams.get('aba') || 'overview'
+  
   const [subAba, setSubAba] = useState('gantt')
   const [showImport, setShowImport] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -90,9 +94,11 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   }, [obraId, refresh])
 
   const handleSetAba = useCallback((novaAba: string, novaSubAba?: string) => {
-    setAba(novaAba)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('aba', novaAba)
+    router.push(`/obras/${obraId}?${params.toString()}`)
     if (novaSubAba) setSubAba(novaSubAba)
-  }, [])
+  }, [searchParams, router, obraId])
 
   const handleImported = useCallback(() => {
     refresh()
@@ -149,35 +155,12 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
 
       <ObraHeader
         obra={obra}
-        progressPercent={progressPercent}
-        currentStep={currentStep}
-        stepIndex={currentStepIdx}
+        stats={stats}
+        critCount={alerts.filter(a => a.severity === 'critico').length}
       />
 
-      {/* Navegação Operacional (The Golden Path) */}
-      <div className="flex flex-col md:flex-row gap-4 mb-10 no-print relative z-20">
-        <div className="bg-slate-200/40 p-1.5 rounded-[1.5rem] flex gap-1 border border-slate-200/60 overflow-x-auto flex-1 shadow-inner">
-          {[
-            { id: 'overview',      name: 'Painel de Controle', icon: <LayoutDashboard className="w-4 h-4" /> },
-            { id: 'planejamento',  name: '1. Estruturar Plano', icon: <Layers className="w-4 h-4" /> },
-            { id: 'programacao',   name: '2. Programar Semana', icon: <Calendar className="w-4 h-4" /> },
-            { id: 'campo',         name: '3. Gerir Produção',   icon: <Package className="w-4 h-4" /> },
-            { id: 'gestao',        name: '4. Medição (RDO)',    icon: <TrendingUp className="w-4 h-4" /> },
-            { id: 'controladoria', name: '5. Analisar Desvios', icon: <FileCheck className="w-4 h-4" /> },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => handleSetAba(t.id)}
-              className={`px-6 py-3.5 rounded-2xl text-[11px] font-black transition-all flex items-center gap-2 uppercase tracking-tight shrink-0 ${
-                aba === t.id ? 'bg-white text-blue-600 shadow-lg ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'
-              }`}
-            >
-              {t.icon} {t.name}
-            </button>
-          ))}
-        </div>
-
-      </div>
+      {/* Main Container - Espaçamento simplificado após remover as abas superiores */}
+      <div className="pt-2" />
 
       <main className="animate-in fade-in slide-in-from-bottom-4 duration-700">
 

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { 
   LayoutDashboard, 
@@ -12,27 +12,38 @@ import {
   Hammer,
   BarChart3,
   ClipboardList,
-  Settings
+  Settings,
+  ArrowLeft
 } from 'lucide-react'
-
-const MENU_ITEMS = [
-  { id: 'obras',         label: 'Obras',         icon: Building2,     href: '/obras' },
-  { id: 'planejamento',  label: 'Planejamento',  icon: Calendar,      href: '/planejamento' },
-  { id: 'execucao',      label: 'Execução',      icon: Hammer,        href: '/execucao' },
-  { id: 'indicadores',   label: 'Indicadores',   icon: BarChart3,     href: '/indicadores' },
-  { id: 'medicoes',      label: 'Medições',      icon: ClipboardList, href: '/medicoes' },
-  { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: '/configuracoes' },
-]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
 
   // Ocultar sidebar em telas de login e registro
   if (pathname === '/login' || pathname === '/register') return null
 
+  const isObraRoute = pathname.startsWith('/obras/') && pathname !== '/obras'
+  const obraId = isObraRoute ? pathname.split('/')[2] : null
+  const currentAba = searchParams.get('aba') || 'overview'
+
+  const MENU_ITEMS = isObraRoute ? [
+    { id: 'voltar',        label: '← Voltar para Obras', icon: ArrowLeft, href: '/obras' },
+    { id: 'overview',      label: 'Torre de Controle', icon: LayoutDashboard, href: `/obras/${obraId}?aba=overview`, match: 'overview' },
+    { id: 'planejamento',  label: 'Planejamento',  icon: Calendar,      href: `/obras/${obraId}?aba=planejamento`, match: 'planejamento' },
+    { id: 'programacao',   label: 'Programação',   icon: Calendar,      href: `/obras/${obraId}?aba=programacao`, match: 'programacao' },
+    { id: 'execucao',      label: 'Execução',      icon: Hammer,        href: `/obras/${obraId}?aba=campo`, match: 'campo' },
+    { id: 'indicadores',   label: 'Indicadores',   icon: BarChart3,     href: `/obras/${obraId}?aba=controladoria`, match: 'controladoria' },
+    { id: 'medicoes',      label: 'Medições',      icon: ClipboardList, href: `/obras/${obraId}?aba=gestao`, match: 'gestao' },
+    { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: `/obras/${obraId}?aba=configuracoes`, match: 'configuracoes' },
+  ] : [
+    { id: 'obras',         label: 'Obras',         icon: Building2,     href: '/obras' },
+    { id: 'configuracoes', label: 'Configurações', icon: Settings,      href: '/configuracoes' },
+  ]
+
   return (
-    <aside className="w-64 bg-[#0F172A] h-screen sticky top-0 flex flex-col border-r border-slate-800/50 text-slate-300">
+    <aside className="w-64 bg-[#0F172A] h-screen sticky top-0 flex flex-col border-r border-slate-800/50 text-slate-300 shrink-0">
       {/* Logo Area */}
       <div className="p-8 flex items-center gap-3">
         <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -45,10 +56,10 @@ export default function Sidebar() {
       </div>
 
       {/* Main Menu */}
-      <nav className="flex-1 px-4 space-y-1 mt-4">
+      <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
         {MENU_ITEMS.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = isObraRoute && item.match ? currentAba === item.match : pathname === item.href
           
           return (
             <Link
@@ -95,3 +106,4 @@ export default function Sidebar() {
     </aside>
   )
 }
+
