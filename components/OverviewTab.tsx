@@ -280,7 +280,7 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
                 >
                   <Sliders className="w-3.5 h-3.5" /> What-If
                 </button>
-                <button onClick={() => onSetAba('relatorio')} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">
+                <button onClick={() => onSetAba('controladoria')} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">
                   <BarChart3 className="w-3.5 h-3.5" /> Relatório
                 </button>
               </div>
@@ -442,30 +442,6 @@ export default function OverviewTab({ atividades, diarios, obra, onSetAba }: Ove
               </div>
             </button>
           </div>
-        </div>
-
-        {/* ── QUICK NAV ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { tab: 'planejamento', icon: Activity, label: 'Estruturar Plano', desc: 'Gantt, Linha de Balanço e Precedências.', bg: 'bg-slate-50', icon_color: 'text-slate-600' },
-            { tab: 'programacao', icon: Calendar, label: 'Programar Semana', desc: 'Definir pacote de trabalho.', bg: 'bg-blue-50', icon_color: 'text-blue-600' },
-            { tab: 'controladoria', icon: Target, label: 'Analisar Desvios', desc: 'CNC, forecast e Curva S.', bg: 'bg-violet-50', icon_color: 'text-violet-600' },
-          ].map(({ tab, icon: Icon, label, desc, bg, icon_color }) => (
-            <button
-              key={tab}
-              onClick={() => onSetAba(tab)}
-              className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm group cursor-pointer hover:border-blue-200 hover:shadow-md transition-all text-left"
-            >
-              <div className="flex justify-between items-start mb-5">
-                <div className={`w-12 h-12 ${bg} ${icon_color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
-              </div>
-              <h4 className="text-base font-black text-slate-800 tracking-tight mb-1">{label}</h4>
-              <p className="text-xs text-slate-500 font-medium">{desc}</p>
-            </button>
-          ))}
         </div>
 
       </div>

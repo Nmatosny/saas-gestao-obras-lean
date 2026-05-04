@@ -38,8 +38,14 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   const searchParams = useSearchParams()
   const router = useRouter()
   const aba = searchParams.get('aba') || 'overview'
-  
-  const [subAba, setSubAba] = useState('gantt')
+  const view = searchParams.get('view') || ''
+
+  const subAba = useMemo(() => {
+    if (aba === 'planejamento') return view || 'locais'
+    if (aba === 'campo') return view || 'kanban'
+    return view
+  }, [aba, view])
+
   const [showImport, setShowImport] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedDiario, setSelectedDiario] = useState<Diario | null>(null)
@@ -96,8 +102,15 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   const handleSetAba = useCallback((novaAba: string, novaSubAba?: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('aba', novaAba)
+    if (novaSubAba) params.set('view', novaSubAba)
+    else params.delete('view')
     router.push(`/obras/${obraId}?${params.toString()}`)
-    if (novaSubAba) setSubAba(novaSubAba)
+  }, [searchParams, router, obraId])
+
+  const handleSetView = useCallback((novoView: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('view', novoView)
+    router.push(`/obras/${obraId}?${params.toString()}`)
   }, [searchParams, router, obraId])
 
   const handleImported = useCallback(() => {
@@ -174,19 +187,19 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {aba === 'planejamento' && (
-          <div className="space-y-10">
-            <div className="flex gap-8 border-b border-slate-100 pb-4 overflow-x-auto no-print">
+          <div className="space-y-8">
+            <div className="bg-slate-200/50 p-1.5 rounded-2xl flex gap-1 border border-slate-200 overflow-x-auto w-max shadow-inner no-print mx-auto">
               {[
-                { id: 'gantt',       label: 'Cronograma' },
-                { id: 'fluxo',       label: 'Linha de Balanço' },
-                { id: 'locais',      label: 'Estrutura' },
-                { id: 'dependencias',label: 'Precedência' },
+                { id: 'locais',      label: '1. Locais de Trabalho' },
+                { id: 'dependencias',label: '2. Precedências' },
+                { id: 'gantt',       label: '3. Cronograma (Gantt)' },
+                { id: 'fluxo',       label: '4. Linha de Balanço' },
               ].map(s => (
                 <button
                   key={s.id}
-                  onClick={() => setSubAba(s.id)}
-                  className={`text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
-                    subAba === s.id ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400'
+                  onClick={() => handleSetView(s.id)}
+                  className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 ${
+                    subAba === s.id ? 'bg-white text-blue-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'
                   }`}
                 >
                   {s.label}
@@ -226,16 +239,16 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
 
         {aba === 'campo' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex gap-8 border-b border-slate-100 pb-4 overflow-x-auto no-print">
+            <div className="bg-slate-200/50 p-1.5 rounded-2xl flex gap-1 border border-slate-200 overflow-x-auto w-max shadow-inner no-print mb-4">
               {[
                 { id: 'kanban',      label: 'Painel de Produção' },
                 { id: 'lookahead',   label: 'Lookahead 4 Semanas' },
               ].map(s => (
                 <button
                   key={s.id}
-                  onClick={() => setSubAba(s.id)}
-                  className={`text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
-                    subAba === s.id || (!['kanban', 'lookahead'].includes(subAba) && s.id === 'kanban') ? 'text-blue-600 border-b-2 border-blue-600 pb-4' : 'text-slate-400 hover:text-slate-600'
+                  onClick={() => handleSetView(s.id)}
+                  className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 ${
+                    subAba === s.id ? 'bg-white text-blue-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'
                   }`}
                 >
                   {s.label}
