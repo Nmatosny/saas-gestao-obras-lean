@@ -184,8 +184,7 @@ export async function POST(request: Request) {
             weight: act.peso,
             locationId,
             serviceId,
-            obraId,
-            versaoId: versao.id
+            obraId
           }
         });
       }
@@ -197,6 +196,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Erro na importação:', error);
-    return NextResponse.json({ error: 'Erro processando o arquivo. Verifique o formato.' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Erro interno processando importação';
+    return NextResponse.json({ error: `Falha na importação: ${msg}` }, { status: 500 });
   }
 }
