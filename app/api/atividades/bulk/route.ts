@@ -82,6 +82,9 @@ export async function POST(request: Request) {
       }
 
       return resultado;
+    }, {
+      maxWait: 10000,
+      timeout: 120000
     });
 
     return NextResponse.json({ count: criadas.length, atividades: criadas }, { status: 201 });

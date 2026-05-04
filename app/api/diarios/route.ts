@@ -202,6 +202,9 @@ export async function POST(request: Request) {
       }
 
       return diario;
+    }, {
+      maxWait: 10000,
+      timeout: 120000
     });
 
     return NextResponse.json(result, { status: 201 });

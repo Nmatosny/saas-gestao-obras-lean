@@ -184,6 +184,9 @@ export async function POST(request: Request) {
       }
       
       return { count: activitiesToCreate.length };
+    }, {
+      maxWait: 10000,
+      timeout: 120000
     });
 
     return NextResponse.json({ message: 'Importação concluída com sucesso', atividadesImportadas: result.count }, { status: 201 });
