@@ -19,8 +19,7 @@ export default function DocsPage() {
               Gerencie plantas, memoriais e documentos de licenciamento vinculados diretamente às atividades.
            </p>
            <div className="flex gap-4">
-              <button className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200">Em Breve</button>
-              <button className="bg-white border border-slate-100 text-slate-400 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Solicitar Acesso</button>
+              <div className="bg-slate-100 text-slate-400 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200">Módulo em Desenvolvimento</div>
            </div>
         </div>
     </div>

@@ -32,7 +32,7 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
 
   const {
     obra, atividades, versoes, diarios, dependencias, alerts, stats,
-    hasBaseline, loading, error, refresh
+    hasBaseline, loading, error, refresh, mutateState
   } = useObraData(obraId)
 
   const searchParams = useSearchParams()
@@ -77,22 +77,35 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
   }, [])
 
   const handleUpdateAtividade = useCallback(async (id: string, data: Partial<Atividade>) => {
+    // Optimistic Update
+    mutateState(prev => ({
+      ...prev,
+      atividades: prev.atividades.map(a => a.id === id ? { ...a, ...data } : a)
+    }))
+    
     await fetch('/api/atividades', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...data }),
     })
+    // Opcionalmente, atualizar com dados do server em background
     refresh()
-  }, [refresh])
+  }, [mutateState, refresh])
 
   const handleStatusChange = useCallback(async (id: string, status: string) => {
+    // Optimistic Update
+    mutateState(prev => ({
+      ...prev,
+      atividades: prev.atividades.map(a => a.id === id ? { ...a, status } : a)
+    }))
+
     await fetch('/api/atividades/status', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status }),
     })
     refresh()
-  }, [refresh])
+  }, [mutateState, refresh])
 
   const handleSalvarBaseline = useCallback(async () => {
     await fetch(`/api/obras/${obraId}/baseline`, { method: 'POST' })

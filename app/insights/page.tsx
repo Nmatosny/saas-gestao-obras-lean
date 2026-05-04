@@ -66,9 +66,6 @@ export default function InsightsPage() {
               <Search className="w-4 h-4 text-slate-400" />
               <input placeholder="Buscar obra..." className="bg-transparent border-none text-sm font-bold outline-none" />
            </div>
-           <button className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm text-slate-500 hover:text-blue-600">
-              <Filter className="w-5 h-5" />
-           </button>
         </div>
       </div>
 
@@ -139,9 +136,9 @@ export default function InsightsPage() {
                   </div>
                ))}
             </div>
-            <button className="mt-8 w-full bg-slate-50 text-slate-400 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 transition-all">
-               Ver Relatório Consolidado
-            </button>
+            <div className="mt-8 w-full bg-slate-50 text-slate-400 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-center border border-slate-100">
+               Relatórios consolidados em breve
+            </div>
          </div>
 
       </div>
