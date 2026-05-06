@@ -28,7 +28,9 @@ export default function RootLayout({
           <main className="flex-1 h-screen overflow-y-auto bg-slate-50 pb-24 lg:pb-0">
             {children}
           </main>
-          <MobileNav />
+          <Suspense fallback={null}>
+            <MobileNav />
+          </Suspense>
         </Providers>
       </body>
     </html>
