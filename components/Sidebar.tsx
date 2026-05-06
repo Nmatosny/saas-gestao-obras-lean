@@ -55,7 +55,7 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="w-72 bg-[#0F172A] h-screen sticky top-0 flex flex-col border-r border-slate-800 shrink-0 z-50 overflow-hidden">
+    <aside className="hidden lg:flex w-72 bg-[#0F172A] h-screen sticky top-0 flex-col border-r border-slate-800 shrink-0 z-50 overflow-hidden">
       
       {/* BRANDING & PROJECT SWITCHER */}
       <div className="p-8 pb-6">

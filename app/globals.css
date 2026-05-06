@@ -27,7 +27,6 @@ body {
 
 /* ── PDF Flash / Impressão ─────────────────────────────────────────────── */
 @media print {
-  /* Remove chrome de navegação e elementos interativos */
   .no-print,
   nav,
   header,
@@ -36,7 +35,6 @@ body {
     display: none !important;
   }
 
-  /* Reset de página */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -50,7 +48,6 @@ body {
     padding: 0;
   }
 
-  /* Container principal ocupa a página inteira */
   main,
   [class*="max-w-"] {
     max-width: 100% !important;
@@ -58,32 +55,59 @@ body {
     margin: 0 !important;
   }
 
-  /* Cards ficam com borda visível em vez de shadow */
   [class*="shadow"] {
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
   }
 
-  /* Garante que dark cards (bg-slate-900) imprimam com fundo visível */
   .bg-slate-900 {
     background-color: #1e293b !important;
     color: #ffffff !important;
   }
 
-  /* Quebra de página antes de seções principais */
   .page-break-before {
     page-break-before: always;
   }
 
-  /* Evita quebra de página dentro de cards */
   [class*="rounded-"] {
     page-break-inside: avoid;
   }
 
-  /* Margem de página */
   @page {
     margin: 1.5cm 2cm;
     size: A4 landscape;
   }
 }
 
+/* ── Mobile & Field Utilities ─────────────────────────────────────────── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 768px) {
+  button, 
+  select,
+  input {
+    min-height: 44px;
+  }
+
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}

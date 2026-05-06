@@ -22,6 +22,15 @@ type RUPData = { servico: string; rup: number; meta: number; status: 'bom' | 'al
 
 const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899']
 
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span className="text-[9px] font-black text-slate-400 uppercase">{label}</span>
+    </div>
+  )
+}
+
 export default function IndicadoresTab({ obraId }: { obraId: string }) {
   const [loading, setLoading] = useState(true)
   const [curvaS, setCurvaS] = useState<CurvaSPoint[]>([])
@@ -89,7 +98,7 @@ export default function IndicadoresTab({ obraId }: { obraId: string }) {
   )
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-700">
+    <div className="space-y-6 lg:space-y-8 pb-32 animate-in fade-in duration-700">
       
       {/* 1. TOP KPI ROW */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -125,35 +134,26 @@ export default function IndicadoresTab({ obraId }: { obraId: string }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
          
-         {/* 2. FINANCEIRO: CURVA S (AC x EV x PV) */}
-         <div className="xl:col-span-2 bg-white rounded-[3rem] border border-slate-100 shadow-sm p-10">
-            <div className="flex items-center justify-between mb-10">
+          {/* 2. FINANCEIRO: CURVA S (AC x EV x PV) */}
+          <div className="lg:col-span-2 bg-white rounded-[2.5rem] lg:rounded-[3rem] border border-slate-100 shadow-sm p-6 lg:p-10">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 lg:mb-10 gap-6">
                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
                      <TrendingUp className="w-6 h-6" />
                   </div>
                   <div>
-                     <h3 className="text-xl font-black text-slate-800 tracking-tight">Fluxo Financeiro e Agregado</h3>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Análise de Valor Agregado (EVA)</p>
+                     <h3 className="text-lg lg:text-xl font-black text-slate-800 tracking-tight">Financeiro e Agregado</h3>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Análise de Valor Agregado</p>
                   </div>
                </div>
-               <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                     <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                     <span className="text-[9px] font-black text-slate-400 uppercase">Orçado (PV)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                     <span className="text-[9px] font-black text-slate-400 uppercase">Agregado (EV)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                     <span className="text-[9px] font-black text-slate-400 uppercase">Custo Real (AC)</span>
-                  </div>
+               <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+                  <LegendItem color="#cbd5e1" label="Orçado" />
+                  <LegendItem color="#10b981" label="Agregado" />
+                  <LegendItem color="#3b82f6" label="Real" />
                </div>
             </div>
 
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={280}>
                <AreaChart data={curvaS}>
                   <defs>
                      <linearGradient id="gradEV" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
@@ -171,7 +171,7 @@ export default function IndicadoresTab({ obraId }: { obraId: string }) {
                   <Area type="monotone" dataKey="ac" stroke="#3b82f6" strokeWidth={3} fill="url(#gradAC)" />
                </AreaChart>
             </ResponsiveContainer>
-         </div>
+          </div>
 
          {/* 3. OPERACIONAL: CLIMA & RDO */}
          <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm p-10 flex flex-col">

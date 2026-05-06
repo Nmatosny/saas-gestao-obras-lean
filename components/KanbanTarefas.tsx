@@ -116,82 +116,113 @@ export default function KanbanTarefas({ atividades, onUpdateTask, onStatusChange
          </div>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {columns.map(col => (
-            <div key={col.id} className="space-y-4">
-              <div className="flex items-center justify-between px-4 mb-2">
-                 <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">{col.icon} {col.name}</h3>
-                 <span className="text-[10px] font-black text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
-                   {filteredAtivs.filter(a => a.status === col.id).length}
-                 </span>
+      {/* Desktop Kanban */}
+      <div className="hidden lg:block">
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-4 gap-6">
+            {columns.map(col => (
+              <div key={col.id} className="space-y-4">
+                <div className="flex items-center justify-between px-4 mb-2">
+                  <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">{col.icon} {col.name}</h3>
+                  <span className="text-[10px] font-black text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                    {filteredAtivs.filter(a => a.status === col.id).length}
+                  </span>
+                </div>
+
+                <Droppable droppableId={col.id}>
+                  {(provided, snapshot) => (
+                    <div 
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className={`space-y-4 min-h-[600px] p-4 rounded-[2rem] border transition-colors ${
+                        snapshot.isDraggingOver ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/50 border-slate-100'
+                      }`}
+                    >
+                      {filteredAtivs.filter(a => a.status === col.id).map((a, index) => (
+                        <AtividadeCard key={a.id} a={a} index={index} onSelect={() => setSelectedTask(a)} />
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
+            ))}
+          </div>
+        </DragDropContext>
+      </div>
 
-              <Droppable droppableId={col.id}>
-                {(provided, snapshot) => (
-                  <div 
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className={`space-y-4 min-h-[600px] p-4 rounded-[2rem] border transition-colors ${
-                      snapshot.isDraggingOver ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/50 border-slate-100'
-                    }`}
+      {/* Mobile Kanban (Vertical List) */}
+      <div className="lg:hidden space-y-12 pb-24">
+        {columns.map(col => {
+          const tasks = filteredAtivs.filter(a => a.status === col.id)
+          if (tasks.length === 0 && col.id !== 'programado') return null
+          
+          return (
+            <div key={col.id} className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100">{col.icon}</div>
+                  {col.name}
+                </h3>
+                <span className="text-xs font-black text-slate-400">{tasks.length}</span>
+              </div>
+              
+              <div className="space-y-3">
+                {tasks.map((a, idx) => (
+                  <div key={a.id} 
+                    onClick={() => setSelectedTask(a)}
+                    className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm active:scale-[0.98] transition-all"
                   >
-                    {filteredAtivs.filter(a => a.status === col.id).map((a, index) => {
-                      const isDelayed = a.status !== 'concluido' && a.progress < (a.plannedProgress || 0)
-
-                      return (
-                        <Draggable key={a.id} draggableId={a.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md relative group cursor-pointer ${
-                                snapshot.isDragging ? 'shadow-2xl ring-4 ring-blue-500/20 scale-105 z-50' : ''
-                              }`}
-                              onClick={() => setSelectedTask(a)}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                 <h4 className="text-[13px] font-black text-slate-800 leading-snug pr-4">{a.name}</h4>
-                                 <GripVertical className="w-4 h-4 text-slate-200 shrink-0 group-hover:text-slate-400 transition-colors" />
-                              </div>
-
-                              <div className="flex items-center gap-2 mb-4">
-                                <span className="bg-slate-50 text-slate-500 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5">
-                                  <Folder className="w-3 h-3" /> {a.location?.name || 'Geral'}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                    <div className="w-full bg-slate-100 rounded-full h-1.5 w-16 overflow-hidden">
-                                       <div 
-                                         className={`h-full transition-all duration-500 ${isDelayed ? 'bg-red-500' : 'bg-blue-500'}`} 
-                                         style={{ width: `${Math.round(a.progress)}%` }} 
-                                       />
-                                    </div>
-                                    <span className="text-[10px] font-black text-slate-600">{Math.round(a.progress)}%</span>
-                                 </div>
-                                 
-                                 {a.causaNaoCumprimento && (
-                                   <span className="text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-md uppercase border border-red-100">
-                                     Com CNC
-                                   </span>
-                                 )}
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      )
-                    })}
-                    {provided.placeholder}
+                    <div className="flex justify-between items-start mb-4">
+                       <h4 className="text-lg font-black text-slate-800 leading-tight">{a.name}</h4>
+                       <div className="p-3 bg-slate-50 rounded-xl">
+                          <ChevronRight className="w-5 h-5 text-slate-300" />
+                       </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                       <span className="px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5">
+                          <Folder className="w-3.5 h-3.5" /> {a.location?.name || 'Geral'}
+                       </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                       <div className="flex-1 bg-slate-100 h-3 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-600 transition-all duration-500" 
+                            style={{ width: `${a.progress}%` }} 
+                          />
+                       </div>
+                       <span className="text-xs font-black text-slate-600">{Math.round(a.progress)}%</span>
+                    </div>
+                    
+                    {/* Mobile Quick Action */}
+                    <div className="mt-6 flex gap-2">
+                       <button className="flex-1 min-h-[48px] bg-slate-50 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100">
+                          Detalhes
+                       </button>
+                       {col.id === 'programado' && (
+                         <button 
+                           onClick={(e) => { e.stopPropagation(); onStatusChange(a.id, 'em_andamento') }}
+                           className="flex-[2] min-h-[48px] bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                         >
+                            Iniciar Agora <Rocket className="w-3.5 h-3.5" />
+                         </button>
+                       )}
+                       {col.id === 'em_andamento' && (
+                         <button 
+                           onClick={(e) => { e.stopPropagation(); setSelectedTask(a) }}
+                           className="flex-[2] min-h-[48px] bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+                         >
+                            Atualizar <CheckCircle2 className="w-3.5 h-3.5" />
+                         </button>
+                       )}
+                    </div>
                   </div>
-                )}
-              </Droppable>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </DragDropContext>
+          )
+        })}
+      </div>
 
       {selectedTask && (
         <DetalhesTarefaModal
@@ -279,7 +310,53 @@ function ImpedimentoModal({ onConfirm, onCancel }: { onConfirm: (causa: string, 
   )
 }
 
-function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: Atividade; onClose: () => void; onUpdateTask: (id: string, d: Partial<Atividade>) => void }) {
+function AtividadeCard({ a, index, onSelect }: { a: Atividade; index: number; onSelect: () => void }) {
+  const isDelayed = a.status !== 'concluido' && a.progress < (a.plannedProgress || 0)
+  return (
+    <Draggable draggableId={a.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md relative group cursor-pointer ${
+            snapshot.isDragging ? 'shadow-2xl ring-4 ring-blue-500/20 scale-105 z-50' : ''
+          }`}
+          onClick={onSelect}
+        >
+          <div className="flex items-start justify-between mb-3">
+             <h4 className="text-[13px] font-black text-slate-800 leading-snug pr-4">{a.name}</h4>
+             <GripVertical className="w-4 h-4 text-slate-200 shrink-0 group-hover:text-slate-400 transition-colors" />
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <span className="bg-slate-50 text-slate-500 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5">
+              <Folder className="w-3 h-3" /> {a.location?.name || 'Geral'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+             <div className="flex items-center gap-2">
+                <div className="w-full bg-slate-100 rounded-full h-1.5 w-16 overflow-hidden">
+                   <div 
+                     className={`h-full transition-all duration-500 ${isDelayed ? 'bg-red-500' : 'bg-blue-500'}`} 
+                     style={{ width: `${Math.round(a.progress)}%` }} 
+                   />
+                </div>
+                <span className="text-[10px] font-black text-slate-600">{Math.round(a.progress)}%</span>
+             </div>
+             
+             {a.causaNaoCumprimento && (
+               <span className="text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-md uppercase border border-red-100">
+                 Com CNC
+               </span>
+             )}
+          </div>
+        </div>
+      )}
+    </Draggable>
+  )
+}
   const [nova, setNova] = useState('')
   const [restricoes, setRestricoes] = useState<Restricao[]>([])
   const [causa, setCausa] = useState(task.causaNaoCumprimento || '')
