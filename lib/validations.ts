@@ -12,6 +12,14 @@ export const obraSchema = z.object({
   engenheiro: z.string().optional(),
 });
 
+export const resourceSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  type: z.enum(['EMPREITEIRA', 'FUNCIONARIO']),
+  role: z.string().optional().nullable(),
+  companyName: z.string().optional().nullable(),
+  hourlyRate: z.number().optional().default(0),
+});
+
 export const atividadeSchema = z.object({
   id: z.string().optional(),
   status: z.enum(['planejado', 'em_andamento', 'concluido']).optional(),
@@ -43,6 +51,7 @@ export const diarioSchema = z.object({
     quantidadeRealizada: z.number().min(0).optional().default(0),
     status: z.string(),
     quantidadeTrabalhadores: z.number().optional().default(0),
+    actualManHours: z.number().optional().nullable(),
     fotosAtividade: z.array(z.string()).optional(),
     efetivoIndices: z.array(z.number()).optional(),
   })).optional(),

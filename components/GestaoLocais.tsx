@@ -282,20 +282,37 @@ export default function GestaoLocais({ obraId, onLocaisChange }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-blue-600" /> Hierarquia de Locais
+                  <MapPin className="w-4 h-4 text-blue-600" /> Fluxo de Locais (Hierarquia)
                 </h3>
                 <p className="text-xs text-slate-400 font-medium mt-1">
-                  {locations.length} local(is) cadastrado(s). Ordene arrastando.
+                  Defina a sequência física da obra. Esta ordem define a inclinação da Linha de Balanço.
                 </p>
               </div>
-              <button
-                onClick={() => setShowRange(!showRange)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                  showRange ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Hash className="w-3.5 h-3.5" /> Gerar por Range
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    setLoading(true)
+                    try {
+                      // Logic to pull unique locations from activities
+                      const res = await fetch(`/api/obras/${obraId}/stats/sync-locations`, { method: 'POST' })
+                      if (res.ok) await carregar()
+                    } finally {
+                      setLoading(false)
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5" /> Sincronizar do Cronograma
+                </button>
+                <button
+                  onClick={() => setShowRange(!showRange)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    showRange ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Hash className="w-3.5 h-3.5" /> Gerar por Range
+                </button>
+              </div>
             </div>
 
             {/* Form single */}

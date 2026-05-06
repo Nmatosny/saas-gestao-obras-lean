@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       include: {
         location: true,
         service: true,
+        resource: true,
         restricoes: {
           select: { id: true, status: true }
         }
@@ -71,6 +72,7 @@ export async function PATCH(request: Request) {
     if (data.causaNaoCumprimento !== undefined) updateData.causaNaoCumprimento = data.causaNaoCumprimento || null;
     if (data.impactoDescricao !== undefined) updateData.impactoDescricao = data.impactoDescricao || null;
     if (data.budgetedCost !== undefined) updateData.budgetedCost = Number(data.budgetedCost);
+    if (data.resourceId !== undefined) updateData.resourceId = data.resourceId || null;
 
     await prisma.atividade.update({
       where: { id },

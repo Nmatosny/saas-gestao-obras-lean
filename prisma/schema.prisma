@@ -29,7 +29,8 @@ model Workspace {
   name      String
   users     User[]
   obras     Obra[]
-  createdAt DateTime @default(now())
+  resources   Resource[]
+  createdAt   DateTime @default(now())
 }
 
 model Obra {
@@ -63,9 +64,17 @@ model Atividade {
   baselineFim     DateTime?
   progress        Float       @default(0)
   weight          Float       @default(1)
-  status          String      @default("planejado") // planejado, em_andamento, concluido, impedido
+  status          String      @default("planejado")
   isCritical      Boolean     @default(false)
   
+  // WBS / Hierarchy
+  wbs             String?
+  outlineLevel    Int         @default(0)
+  isSummary       Boolean     @default(false)
+  parentId        String?
+  parent          Atividade?  @relation("AtividadeHierarchy", fields: [parentId], references: [id])
+  children        Atividade[] @relation("AtividadeHierarchy")
+
   // Medição Acumulada
   quantidadeTotal Float?
   unidadeMedida   String?
@@ -88,6 +97,9 @@ model Atividade {
   
   predecessors    Dependency[] @relation("PredecessorAtiv")
   sucessors       Dependency[] @relation("SucessorAtiv")
+  
+  resourceId      String?
+  resource        Resource?    @relation(fields: [resourceId], references: [id])
   
   diarioAtivs     DiarioAtividade[]
   restricoes      Restricao[]
@@ -194,6 +206,8 @@ model DiarioAtividade {
   status                String?
   quantidadeTrabalhadores Int     @default(0)
   fotosAtividade        String?   // JSON array of {url, caption}
+  actualManHours        Float?    // Hours spent by the resource in this entry
+  cost                  Float     @default(0) // Financial cost of this entry
   apontamentos          Apontamento[]
 
   @@index([diarioId])
@@ -262,7 +276,21 @@ model MeasurementAudit {
   obra            Obra      @relation(fields: [obraId], references: [id], onDelete: Cascade)
   user            User      @relation(fields: [userId], references: [id])
 
-  @@index([obraId])
   @@index([atividadeId])
   @@index([userId])
+}
+
+model Resource {
+  id            String      @id @default(cuid())
+  name          String
+  type          String      @default("EMPREITEIRA") // EMPREITEIRA, FUNCIONARIO
+  role          String?     // Pedreiro, Eletricista, etc.
+  companyName   String?     // For contractors
+  hourlyRate    Float       @default(0)
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id])
+  atividades    Atividade[]
+  createdAt     DateTime    @default(now())
+
+  @@index([workspaceId])
 }

@@ -14,7 +14,8 @@ export async function PATCH(request: Request) {
     const result = await prisma.atividade.updateMany({
       where: { id: { in: ids } },
       data: {
-        status: data.status || 'programado'
+        status: data.status || 'programado',
+        resourceId: data.resourceId || undefined
       }
     });
 

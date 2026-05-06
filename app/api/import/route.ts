@@ -3,6 +3,28 @@ import { prisma } from '@/lib/db';
 import * as xlsx from 'xlsx';
 import { parseStringPromise } from 'xml2js';
 import { getWorkspaceSession, validateObraOwnership, unauthorizedResponse } from '@/lib/auth';
+import { randomUUID } from 'crypto';
+import fs from 'fs';
+
+function logError(error: any) {
+  const logMsg = `\n[${new Date().toISOString()}] ${error.message}\n${error.stack || ''}\n`;
+  fs.appendFileSync('import-error.log', logMsg);
+}
+
+interface ParsedTask {
+  id: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  budgetedCost: number;
+  weight: number;
+  wbs: string;
+  outlineLevel: number;
+  isSummary: boolean;
+  parentId: string | null;
+  local: string;
+  servico: string;
+}
 
 export async function POST(request: Request) {
   try {
@@ -17,32 +39,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Arquivo e obraId são obrigatórios' }, { status: 400 });
     }
 
-    // TENANT GUARD: Validar se a obra de destino pertence ao workspace do usuário logado
     const isOwner = await validateObraOwnership(obraId, workspaceId);
     if (!isOwner) return unauthorizedResponse();
-
-    const mappingStr = formData.get('mapping') as string;
-    let mapping: { local: string, servico: string, inicio: string, fim: string, custo: string } | null = null;
-    if (mappingStr) {
-      try { mapping = JSON.parse(mappingStr); } catch {}
-    }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const filename = file.name.toLowerCase();
 
-    let activitiesToCreate: Array<{ local: string, servico: string, inicio: Date, fim: Date, custo: number, peso: number }> = [];
+    let tasks: ParsedTask[] = [];
 
     const parseExcelDate = (value: unknown): Date => {
       if (!value) return new Date();
-      if (typeof value === 'number') {
-        return new Date((value - 25569) * 86400 * 1000);
-      }
+      if (typeof value === 'number') return new Date((value - 25569) * 86400 * 1000);
       if (typeof value === 'string') {
         const parts = value.split('/');
-        if (parts.length === 3) {
-          return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-        }
+        if (parts.length === 3) return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
       }
       const d = new Date(value as string | number | Date);
       return isNaN(d.getTime()) ? new Date() : d;
@@ -54,142 +65,193 @@ export async function POST(request: Request) {
       const sheet = workbook.Sheets[sheetName];
       const rows = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
-      activitiesToCreate = rows.map((row) => {
-        let valLocal, valServico, valInicio, valFim, valCusto;
+      const parentStack: { id: string, level: number }[] = [];
 
-        if (mapping) {
-          valLocal = row[mapping.local];
-          valServico = row[mapping.servico];
-          valInicio = row[mapping.inicio];
-          valFim = row[mapping.fim];
-          valCusto = row[mapping.custo];
-        } else {
+      tasks = (rows.map((row) => {
           const getVal = (possibleNames: string[]) => {
             for (const key of Object.keys(row)) {
               if (possibleNames.includes(key.toLowerCase().trim())) return row[key];
             }
             return undefined;
           };
-          valLocal = getVal(['local', 'pavimento', 'fase', 'etapa', 'zona', 'bloco', 'ambiente', 'setor', 'área', 'area']);
-          valServico = getVal(['serviço', 'servico', 'atividade', 'tarefa', 'nome', 'descrição', 'descricao', 'item', 'etapa de serviço']);
-          valInicio = getVal(['data início', 'data inicio', 'inicio', 'início', 'start', 'data de início', 'data de inicio', 'início planejado']);
-          valFim = getVal(['data término', 'data termino', 'término', 'termino', 'fim', 'finish', 'data de término', 'data fim', 'término planejado']);
-          valCusto = getVal(['custo', 'custo (r$)', 'valor', 'orçamento', 'total', 'preço', 'orçamento total', 'preço total']);
-        }
 
-        return {
-          local: valLocal ? String(valLocal) : 'Geral',
-          servico: valServico ? String(valServico) : 'Limpeza',
-          inicio: parseExcelDate(valInicio),
-          fim: parseExcelDate(valFim),
-          custo: Number(valCusto) || 0,
-          peso: 1,
-        };
-      });
-    }
+          const name = String(getVal(['nome da tarefa', 'serviço', 'servico', 'atividade', 'tarefa', 'nome', 'descrição', 'descricao', 'item', 'task name', 'descrição da tarefa']) || '');
+          if (!name || name === 'undefined' || name.trim() === '') return null;
+
+          let rawStart = getVal(['início', 'inicio', 'data início', 'data inicio', 'start', 'início planejado', 'data inicial', 'data de início', 'data de inicio']);
+          let rawEnd = getVal(['término', 'termino', 'fim', 'final', 'finish', 'término planejado', 'data final', 'data de término', 'data de termino']);
+
+          if (!rawStart || !rawEnd) {
+            const dateVals = Object.values(row).filter(v => {
+              if (typeof v === 'number' && v > 40000 && v < 60000) return true;
+              if (typeof v === 'string' && v.includes('/')) return true;
+              return false;
+            });
+            if (!rawStart && dateVals[0]) rawStart = dateVals[0];
+            if (!rawEnd && dateVals[1]) rawEnd = dateVals[1];
+          }
+
+          const rawWbs = String(getVal(['wbs', 'item', 'id', 'identificador', 'wbs (ett)']) || '');
+          const start = parseExcelDate(rawStart);
+          const end = parseExcelDate(rawEnd);
+          const cost = Number(getVal(['custo', 'valor', 'orçamento', 'total'])) || 0;
+        
+          const rawLevel = getVal(['nível', 'nivel', 'outline level', 'nível de estrutura', 'level']);
+          let level = 0;
+          if (typeof rawLevel === 'number') {
+            level = rawLevel - 1;
+          } else if (typeof rawLevel === 'string' && !isNaN(Number(rawLevel))) {
+            level = Number(rawLevel) - 1;
+          } else if (rawWbs.includes('.')) {
+            level = rawWbs.split('.').length - 1;
+          }
+
+          const id = randomUUID();
+          let parentId: string | null = null;
+          while (parentStack.length > 0 && parentStack[parentStack.length - 1].level >= level) {
+            parentStack.pop();
+          }
+          if (parentStack.length > 0) {
+            parentId = parentStack[parentStack.length - 1].id;
+          }
+          parentStack.push({ id, level });
+
+          return {
+            id, name, startDate: start, endDate: end, budgetedCost: cost,
+            weight: 1, wbs: rawWbs, outlineLevel: level, isSummary: false,
+            parentId, local: 'Geral', servico: name
+          };
+        }).filter(Boolean)) as ParsedTask[];
+
+      const allLevelZero = tasks.every(t => t.outlineLevel === 0);
+      if (allLevelZero && tasks.length > 0) {
+        const floorKeywords = ['pavimento', 'pav', 'térreo', 'terreo', 'subsolo', 'ático', 'atico', 'cobertura', 'bloco', 'torre', 'nível', 'nivel', 'apto', 'ambiente'];
+        let currentParent: ParsedTask | null = null;
+        tasks.forEach((t) => {
+          const nameLower = t.name.toLowerCase();
+          const isFloor = floorKeywords.some(key => nameLower.includes(key));
+          if (!isFloor) {
+            currentParent = t;
+            t.outlineLevel = 0;
+            t.isSummary = true;
+            t.parentId = null;
+          } else if (currentParent) {
+            t.parentId = currentParent.id;
+            t.outlineLevel = 1;
+            t.isSummary = false;
+          }
+        });
+      }
+    } 
     else if (filename.endsWith('.xml')) {
       const xmlString = buffer.toString('utf-8');
       const result = await parseStringPromise(xmlString);
+      const projectTasks = result.Project?.Tasks?.[0]?.Task || [];
+      const idMap = new Map<string, string>();
       
-      const project = result.Project;
-      if (!project || !project.Tasks || !project.Tasks[0].Task) {
-         return NextResponse.json({ error: 'Formato de XML do MS Project inválido.' }, { status: 400 });
-      }
+      tasks = projectTasks.map((t: any) => {
+        const id = randomUUID();
+        const name = t.Name?.[0] || 'Tarefa Sem Nome';
+        const start = new Date(t.Start?.[0] || new Date());
+        const end = new Date(t.Finish?.[0] || new Date());
+        const cost = Number(t.Cost?.[0]) || 0;
+        const level = Number(t.OutlineLevel?.[0]) || 0;
+        const isSummary = t.Summary?.[0] === '1';
+        const wbs = t.WBS?.[0] || '';
+        return { id, name, startDate: start, endDate: end, budgetedCost: cost, weight: 1, wbs, outlineLevel: level, isSummary, parentId: null, local: 'Geral', servico: name };
+      });
 
-      const tasks = project.Tasks[0].Task;
+      const stack: { id: string, level: number }[] = [];
+      tasks.forEach(t => {
+        while (stack.length > 0 && stack[stack.length - 1].level >= t.outlineLevel) stack.pop();
+        if (stack.length > 0) t.parentId = stack[stack.length - 1].id;
+        if (t.isSummary) stack.push({ id: t.id, level: t.outlineLevel });
+      });
+    }
 
-      tasks.forEach((task: Record<string, unknown[]>) => {
-        const isSummary = task.Summary && task.Summary[0] === '1';
-        if (isSummary) return;
-        
-        let localName = 'Geral';
-        const parentWBS = task.WBS ? (task.WBS[0] as string).split('.').slice(0, -1).join('.') : null;
-        
-        if (parentWBS) {
-          const parentTask = tasks.find((t: Record<string, unknown[]>) => t.WBS && t.WBS[0] === parentWBS);
-          if (parentTask && parentTask.Name) {
-            localName = parentTask.Name[0] as string;
+    if (tasks.length === 0) {
+      return NextResponse.json({ error: 'Nenhuma tarefa válida no arquivo.' }, { status: 400 });
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.cronogramaVersao.create({ data: { nome: file.name, obraId } });
+        const taskById = new Map(tasks.map(t => [t.id, t]));
+        const getRootName = (t: ParsedTask): string => {
+          let cur = t;
+          while (cur.parentId) {
+            const p = taskById.get(cur.parentId);
+            if (!p) break;
+            cur = p;
           }
-        }
+          return cur.name.trim();
+        };
 
-        activitiesToCreate.push({
-          local: localName,
-          servico: task.Name ? (task.Name[0] as string) : 'Tarefa Sem Nome',
-          inicio: task.Start ? new Date(task.Start[0] as string) : new Date(),
-          fim: task.Finish ? new Date(task.Finish[0] as string) : new Date(),
-          custo: task.Cost ? Number(task.Cost[0]) : 0,
-          peso: task.Work ? Number((task.Work[0] as string).replace('PT','').replace('H','')) : 0,
+        const servicesSet = new Set<string>();
+        const locationsSet = new Set<string>();
+        tasks.forEach(t => {
+          servicesSet.add(getRootName(t));
+          if (t.parentId) locationsSet.add(t.name.trim());
         });
-      });
-    } 
-    else if (filename.endsWith('.mpp')) {
-      return NextResponse.json({ error: 'Formato fechado da Microsoft não suportado. Por favor, abra o MS Project, vá em "Salvar Como -> Dados XML (*.xml)" e envie o arquivo gerado para garantirmos a precisão.' }, { status: 400 });
-    } 
-    else {
-      return NextResponse.json({ error: 'Formato não suportado. Envie Excel (.xlsx, .csv) ou MS Project (.xml)' }, { status: 400 });
+        if (servicesSet.size === 0) servicesSet.add('Geral');
+        if (locationsSet.size === 0) locationsSet.add('Geral');
+
+        await tx.location.createMany({
+          data: Array.from(locationsSet).map(name => ({ name, obraId })),
+          skipDuplicates: true,
+        });
+        await tx.service.createMany({
+          data: Array.from(servicesSet).map(name => ({ name, color: '#3b82f6', obraId })),
+          skipDuplicates: true,
+        });
+
+        const [dbLocs, dbServs] = await Promise.all([
+          tx.location.findMany({ where: { obraId } }),
+          tx.service.findMany({ where: { obraId } }),
+        ]);
+        const locMap = new Map(dbLocs.map(l => [l.name.toLowerCase().trim(), l.id]));
+        const servMap = new Map(dbServs.map(s => [s.name.toLowerCase().trim(), s.id]));
+        const fallbackLocId = dbLocs[0]?.id;
+        const fallbackServId = dbServs[0]?.id;
+
+        const taskRows = tasks.map(t => ({
+          id: t.id,
+          name: t.name,
+          startDate: t.startDate,
+          endDate: t.endDate,
+          budgetedCost: t.budgetedCost,
+          weight: t.weight,
+          wbs: t.wbs || null,
+          outlineLevel: t.outlineLevel,
+          isSummary: t.isSummary,
+          parentId: t.parentId,
+          serviceId: servMap.get(getRootName(t).toLowerCase().trim()) ?? fallbackServId,
+          locationId: t.parentId ? (locMap.get(t.name.toLowerCase().trim()) ?? fallbackLocId) : fallbackLocId,
+          obraId,
+        }));
+
+        const maxLevel = Math.max(0, ...taskRows.map(r => r.outlineLevel));
+        for (let lvl = 0; lvl <= maxLevel; lvl++) {
+          const batch = taskRows.filter(r => r.outlineLevel === lvl);
+          if (batch.length > 0) await tx.atividade.createMany({ data: batch });
+        }
+      }, { maxWait: 10000, timeout: 60000 });
+
+      return NextResponse.json({ message: 'Importação concluída', count: tasks.length }, { status: 201 });
+
+    } catch (dbError: any) {
+      logError(dbError);
+      console.error('[import] Erro Prisma:', dbError);
+      return NextResponse.json({ 
+        error: `Erro no banco: ${dbError.message || 'Erro desconhecido'}`,
+        code: dbError.code,
+        meta: dbError.meta 
+      }, { status: 500 });
     }
 
-    if (activitiesToCreate.length === 0) {
-      return NextResponse.json({ error: 'Nenhuma atividade válida encontrada no arquivo.' }, { status: 400 });
-    }
-
-    // ── Pre-compute unique names before entering the transaction ──────────────
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Snapshot da versão do cronograma
-      const versao = await tx.cronogramaVersao.create({
-        data: { nome: file.name, obraId }
-      });
-
-      // 2. Mapear Locais e Serviços únicos no arquivo
-      const uniqueLocNames = Array.from(new Set(activitiesToCreate.map(a => a.local.trim())));
-      const uniqueServNames = Array.from(new Set(activitiesToCreate.map(a => a.servico.trim())));
-
-      // 3. Garantir que Locais e Serviços existam (Bulk)
-      await tx.location.createMany({
-        data: uniqueLocNames.map(name => ({ name, obraId })),
-        skipDuplicates: true
-      });
-
-      await tx.service.createMany({
-        data: uniqueServNames.map(name => ({ name, color: '#3b82f6', obraId })),
-        skipDuplicates: true
-      });
-
-      // 4. Buscar IDs finais (agora que todos existem)
-      const [locations, services] = await Promise.all([
-        tx.location.findMany({ where: { obraId } }),
-        tx.service.findMany({ where: { obraId } })
-      ]);
-
-      const locMap = new Map(locations.map(l => [l.name.toLowerCase().trim(), l.id]));
-      const servMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s.id]));
-
-      // 5. Criar Atividades em Massa
-      const atividadesData = activitiesToCreate.map(act => ({
-        name: `${act.servico} - ${act.local}`,
-        startDate: act.inicio,
-        endDate: act.fim,
-        budgetedCost: act.custo,
-        locationId: locMap.get(act.local.toLowerCase().trim())!,
-        serviceId: servMap.get(act.servico.toLowerCase().trim())!,
-        obraId
-      }));
-
-      await tx.atividade.createMany({
-        data: atividadesData
-      });
-
-      return { count: activitiesToCreate.length };
-    }, {
-      maxWait: 10000,
-      timeout: 30000
-    });
-
-    return NextResponse.json({ message: 'Importação concluída com sucesso', atividadesImportadas: result.count }, { status: 201 });
-
-  } catch (error) {
-    console.error('Erro na importação:', error);
-    const msg = error instanceof Error ? error.message : 'Erro interno processando importação';
-    return NextResponse.json({ error: `Falha na importação: ${msg}` }, { status: 500 });
+  } catch (error: any) {
+    logError(error);
+    console.error('[import] Erro processamento:', error);
+    return NextResponse.json({ error: 'Erro ao processar o arquivo.' }, { status: 500 });
   }
 }

@@ -19,6 +19,12 @@ export async function GET(
       where: { obraId },
     });
 
+    const dailyCosts = await prisma.diarioAtividade.findMany({
+      where: { atividade: { obraId } },
+      include: { diario: true },
+      orderBy: { diario: { date: 'asc' } }
+    });
+
     if (atividades.length === 0) return NextResponse.json([]);
 
     // Calcula os limites da obra
@@ -75,9 +81,12 @@ export async function GET(
             // Valor Agregado (EV) = % Físico Real * Orçamento
             currentEv += (realAtPoint / 100) * budgeted;
 
-            // Custo Real (AC)
-            // Distribuído linearmente com base no progresso para o gráfico
-            currentAc += (realAtPoint / 100) * actual;
+            // Custo Real (AC) - Somar custos dos diários até esta data
+            const acAtPoint = dailyCosts
+              .filter(dc => dc.atividadeId === a.id && new Date(dc.diario.date) <= currentPointDate)
+              .reduce((acc, dc) => acc + (dc.cost || 0), 0);
+            
+            currentAc += acAtPoint;
          });
          realizado = totalWeight > 0 ? Math.round(weightedReal / totalWeight) : 0;
          ev = currentEv;

@@ -75,7 +75,8 @@ export async function POST(request: Request) {
     // 2. Preparação de Dados (Bulk Preparation)
     const atividadeIds = (atividades || []).map(a => a.atividadeId);
     const currentAtividades = await prisma.atividade.findMany({
-      where: { id: { in: atividadeIds } }
+      where: { id: { in: atividadeIds } },
+      include: { resource: true }
     });
     const currentAtivMap = new Map(currentAtividades.map(a => [a.id, a]));
 
@@ -111,6 +112,10 @@ export async function POST(request: Request) {
         }
         const newProgress = Math.max(calcProgress, current.progress);
 
+        // Financial Calculation
+        const manHours = act.actualManHours ? Number(act.actualManHours) : 0;
+        const entryCost = manHours * (current.resource?.hourlyRate || 0);
+
         diarioAtividadeRecords.push({
           id: daId,
           diarioId,
@@ -119,6 +124,8 @@ export async function POST(request: Request) {
           quantidadeRealizada: qtyToday,
           status: act.status,
           quantidadeTrabalhadores: Number(act.quantidadeTrabalhadores) || 0,
+          actualManHours: act.actualManHours ? Number(act.actualManHours) : null,
+          cost: entryCost,
           fotosAtividade: act.fotosAtividade ? JSON.stringify(act.fotosAtividade) : null,
         });
 
@@ -185,7 +192,8 @@ export async function POST(request: Request) {
           data: {
             progress: da.progress,
             status: da.progress >= 100 ? 'concluido' : 'em_andamento',
-            quantidadeRealizada: { increment: da.quantidadeRealizada }
+            quantidadeRealizada: { increment: da.quantidadeRealizada },
+            actualCost: { increment: da.cost }
           }
         })
       );

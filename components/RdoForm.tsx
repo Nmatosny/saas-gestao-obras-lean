@@ -24,8 +24,10 @@ type Props = {
 // Per-activity extra data tracked alongside avancos
 type AtivExtra = {
   trabalhadores: number
+  horasTrabalhadas: number
   fotos: { url: string; caption: string }[]
   expanded: boolean
+  cncReason?: string
 }
 
 const OPCOES_CLIMA = [
@@ -42,6 +44,18 @@ const OPCOES_OCORRENCIA = [
   'Acidente de trabalho',
   'Erro de execução',
   'Outros',
+]
+
+const CNC_OPTIONS = [
+  'Mão de Obra',
+  'Materiais',
+  'Equipamentos',
+  'Clima/Chuva',
+  'Projeto/Técnico',
+  'Financeiro',
+  'Logística',
+  'Qualidade/Refazer',
+  'Outros'
 ]
 
 export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo }: Props) {
@@ -94,7 +108,7 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
         let changed = false
         ativsEmAndamento.forEach(a => {
           if (!next[a.id]) {
-            next[a.id] = { trabalhadores: 0, fotos: [], expanded: false }
+            next[a.id] = { trabalhadores: 0, horasTrabalhadas: 8, fotos: [], expanded: false, cncReason: '' }
             changed = true
           }
         })
@@ -152,7 +166,9 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
           progress: p,
           status: p >= 100 ? 'concluido' : 'em_andamento',
           quantidadeTrabalhadores: atividadeExtra[id]?.trabalhadores || 0,
-          fotosAtividade: atividadeExtra[id]?.fotos || []
+          actualManHours: (atividadeExtra[id]?.trabalhadores || 0) * (atividadeExtra[id]?.horasTrabalhadas || 0),
+          fotosAtividade: atividadeExtra[id]?.fotos || [],
+          cncReason: (p < (ativsEmAndamento.find(a => a.id === id)?.plannedProgress || 0)) ? atividadeExtra[id]?.cncReason : null
         })),
         fotos: fotos.map(f => ({ url: f.url, caption: f.caption }))
       }
@@ -285,6 +301,16 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
                       </div>
                     </div>
 
+                    {/* Horas */}
+                    <div className="flex flex-col items-center gap-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Horas/Dia</label>
+                      <div className="flex items-center gap-1">
+                        <input type="number" step="0.5" className="w-12 bg-white border border-slate-200 rounded-lg text-center text-sm font-black text-slate-700 py-1"
+                          value={extra.horasTrabalhadas}
+                          onChange={e => updateExtra(a.id, { horasTrabalhadas: Number(e.target.value) })} />
+                      </div>
+                    </div>
+
                     {/* Progresso */}
                     <div className="text-right shrink-0">
                       <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Meta: {a.plannedProgress || 0}%</p>
@@ -305,9 +331,33 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
                   </div>
 
                   {/* Barra de progresso inline */}
-                  <div className="mt-4 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="mt-4 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
                     <div className={`h-full rounded-full transition-all ${desvio >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: `${val}%` }} />
+                    {a.plannedProgress && (
+                      <div className="absolute top-0 w-0.5 h-full bg-slate-400" style={{ left: `${a.plannedProgress}%` }} title="Meta planejada" />
+                    )}
                   </div>
+
+                  {/* CNC Logic (Lean) */}
+                  {val < (a.plannedProgress || 0) && (
+                    <div className="mt-4 flex items-center gap-3 animate-in slide-in-from-top-2">
+                       <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                       </div>
+                       <div className="flex-1">
+                          <p className="text-[8px] font-black text-red-500 uppercase tracking-widest mb-1">Causa de Não Cumprimento (CNC)</p>
+                          <select 
+                            className="w-full bg-red-50/50 border border-red-100 rounded-lg px-3 py-1.5 text-[10px] font-bold text-red-700 outline-none"
+                            value={extra.cncReason || ''}
+                            onChange={e => updateExtra(a.id, { cncReason: e.target.value })}
+                            required
+                          >
+                            <option value="">Selecione o motivo do atraso...</option>
+                            {CNC_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                       </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Painel de fotos expandível */}

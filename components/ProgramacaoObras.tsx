@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { 
   History, Folder, ChevronRight, ChevronDown, CheckCircle2, 
   Calendar, Layers, LayoutGrid, CheckSquare, Square, Rocket, ArrowRight
@@ -13,6 +13,7 @@ type Atividade = {
 }
 
 type Versao = { id: string; nome: string }
+type Resource = { id: string; name: string; type: string }
 
 type Props = {
   atividades: Atividade[]
@@ -26,6 +27,14 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
   const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({})
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
+  const [resources, setResources] = useState<Resource[]>([])
+  const [selectedResourceId, setSelectedResourceId] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/resources')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setResources(data) })
+  }, [])
 
   const ativsDaVersao = useMemo(() => {
     if (selectedVersao === 'mestre') return atividades.filter(a => !a.versaoId && (a.status === 'planejado' || !a.status))
@@ -65,7 +74,10 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ids: Array.from(selectedIds),
-          data: { status: 'programado' } 
+            data: { 
+              status: 'programado',
+              resourceId: selectedResourceId || undefined
+            } 
         })
       })
       
@@ -176,8 +188,23 @@ export default function ProgramacaoObras({ atividades, versoes, onUpdate: _onUpd
            <button 
             onClick={handleBulkProgram}
             disabled={loading}
-            className="bg-slate-900 text-white px-10 py-5 rounded-[2.5rem] shadow-2xl flex items-center gap-4 hover:scale-105 active:scale-95 transition-all group ring-8 ring-white"
+            className="bg-slate-900 text-white pl-8 pr-10 py-5 rounded-[2.5rem] shadow-2xl flex items-center gap-6 hover:scale-105 active:scale-95 transition-all group ring-8 ring-white"
            >
+              <div className="flex flex-col items-start border-r border-white/10 pr-6 mr-2">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Atribuir a:</p>
+                <select 
+                  onClick={e => e.stopPropagation()}
+                  value={selectedResourceId}
+                  onChange={e => { e.stopPropagation(); setSelectedResourceId(e.target.value) }}
+                  className="bg-transparent text-xs font-bold text-blue-400 outline-none cursor-pointer"
+                >
+                  <option value="" className="bg-slate-900 text-white">Não Atribuir</option>
+                  {resources.map(r => (
+                    <option key={r.id} value={r.id} className="bg-slate-900 text-white">{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (

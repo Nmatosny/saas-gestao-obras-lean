@@ -203,14 +203,24 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
           />
         )}
 
+        {aba === 'linha-balanco' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <LinhaBalanco atividades={atividades} dependencias={dependencias} />
+          </div>
+        )}
+
+        {aba === 'cronograma' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <CronogramaGantt atividades={atividades} dependencias={dependencias} onUpdateAtividade={handleUpdateAtividade} />
+          </div>
+        )}
+
         {aba === 'planejamento' && (
           <div className="space-y-8">
             <div className="bg-slate-200/50 p-1.5 rounded-2xl flex gap-1 border border-slate-200 overflow-x-auto w-max shadow-inner no-print mx-auto">
               {[
-                { id: 'locais',      label: '1. Locais de Trabalho' },
-                { id: 'dependencias',label: '2. Precedências' },
-                { id: 'gantt',       label: '3. Cronograma (Gantt)' },
-                { id: 'fluxo',       label: '4. Linha de Balanço' },
+                { id: 'locais',      label: 'Estrutura / Locais' },
+                { id: 'dependencias',label: 'Inteligência / Precedências' },
               ].map(s => (
                 <button
                   key={s.id}
@@ -235,10 +245,8 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
                 </button>
               </div>
             ) : (
-              subAba === 'gantt'        ? <CronogramaGantt atividades={atividades} onUpdateAtividade={handleUpdateAtividade} /> :
               subAba === 'locais'       ? <GestaoLocais obraId={obraId} onLocaisChange={refresh} /> :
-              subAba === 'dependencias' ? <IntelligenceTab atividades={atividades} diarios={diarios} /> :
-              <LinhaBalanco atividades={atividades} dependencias={dependencias} />
+              <IntelligenceTab atividades={atividades} diarios={diarios} />
             )}
           </div>
         )}
@@ -334,6 +342,34 @@ export default function ObraPage({ params }: { params: Promise<{ id: string }> }
             onSalvarBaseline={handleSalvarBaseline}
             hasBaseline={hasBaseline}
           />
+        )}
+
+        {aba === 'cnc' && (
+          <div className="bg-white rounded-[3rem] p-10 border border-slate-100 min-h-[600px] flex flex-col items-center justify-center text-center gap-6 animate-in zoom-in duration-500">
+             <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center shadow-inner">
+                <AlertCircle className="w-10 h-10" />
+             </div>
+             <div>
+                <h3 className="text-2xl font-black text-slate-800">Módulo de Não Conformidades (CNC)</h3>
+                <p className="text-slate-400 font-medium max-w-md mx-auto">Registre e acompanhe desvios técnicos, falhas de execução e pendências de qualidade no canteiro.</p>
+             </div>
+             <button className="bg-slate-900 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:scale-105 transition-transform">
+                Registrar CNC
+             </button>
+          </div>
+        )}
+
+        {aba === 'arquivos' && (
+          <div className="bg-white rounded-[3rem] p-20 border border-slate-100 text-center flex flex-col items-center gap-6">
+             <div className="w-24 h-24 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
+                <Image className="w-10 h-10" />
+             </div>
+             <div>
+                <h3 className="text-2xl font-black text-slate-800">Galeria de Fotos e Arquivos</h3>
+                <p className="text-slate-400 font-medium mt-2">Módulo de armazenamento em nuvem para evidências de campo.</p>
+             </div>
+             <button className="bg-slate-900 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200">Adicionar Arquivos</button>
+          </div>
         )}
 
       </main>
