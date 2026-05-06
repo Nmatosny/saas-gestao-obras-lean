@@ -357,6 +357,8 @@ function AtividadeCard({ a, index, onSelect }: { a: Atividade; index: number; on
     </Draggable>
   )
 }
+
+function DetalhesTarefaModal({ task, onClose, onUpdateTask }: { task: Atividade; onClose: () => void; onUpdateTask: (id: string, data: Partial<Atividade>) => void }) {
   const [nova, setNova] = useState('')
   const [restricoes, setRestricoes] = useState<Restricao[]>([])
   const [causa, setCausa] = useState(task.causaNaoCumprimento || '')

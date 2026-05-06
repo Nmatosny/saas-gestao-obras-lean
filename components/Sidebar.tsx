@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -19,6 +19,12 @@ export default function Sidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [showWarning, setShowWarning] = useState(false)
   
   if (pathname === '/login' || pathname === '/register') return null
@@ -76,7 +82,7 @@ export default function Sidebar() {
              </div>
              <div className="flex-1 min-w-0">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Projeto Ativo</p>
-                <p className="text-xs font-bold text-white truncate">{session?.user?.workspaceId === 'demo' ? '[DEMO] Residencial Horizonte' : 'Obra em Andamento'}</p>
+                <p className="text-xs font-bold text-white truncate">{mounted ? (session?.user?.workspaceId === 'demo' ? '[DEMO] Residencial Horizonte' : 'Obra em Andamento') : 'Obra em Andamento'}</p>
              </div>
              <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
           </div>
@@ -143,10 +149,10 @@ export default function Sidebar() {
       <div className="p-6 bg-slate-900/50 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-6 px-2">
            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-500/20">
-              <span className="text-sm font-black text-blue-400">{session?.user?.name?.[0] || 'N'}</span>
+              <span className="text-sm font-black text-blue-400">{mounted ? (session?.user?.name?.[0] || 'N') : 'N'}</span>
            </div>
            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-white truncate">{session?.user?.name || 'Engenheiro'}</p>
+              <p className="text-xs font-black text-white truncate">{mounted ? (session?.user?.name || 'Engenheiro') : 'Engenheiro'}</p>
               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsável Técnico</p>
            </div>
            <button className="p-2 text-slate-500 hover:text-white transition-colors">
