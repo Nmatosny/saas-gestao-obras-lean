@@ -63,6 +63,11 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
   const [climaManha, setClimaManha] = useState('ensolarado')
   const [climaTarde, setClimaTarde] = useState('ensolarado')
   const [climaNoite, setClimaNoite] = useState('ensolarado')
+  const [times, setTimes] = useState({
+    manha: { start: '07:00', end: '12:00' },
+    tarde: { start: '13:00', end: '17:00' },
+    noite: { start: '', end: '' }
+  })
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([])
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
   const [efetivos, setEfetivos] = useState<Efetivo[]>([])
@@ -158,6 +163,13 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
         weatherMorning: climaManha,
         weatherAfternoon: climaTarde,
         weatherNight: climaNoite,
+        notes: JSON.stringify({ 
+          periodos: {
+            manha: times.manha,
+            tarde: times.tarde,
+            noite: times.noite
+          }
+        }),
         ocorrencias: JSON.stringify(ocorrencias),
         equipamentos: JSON.stringify(equipamentos),
         efetivos: efetivos.map(ef => ({ role: ef.funcao, count: ef.count })),
@@ -222,17 +234,23 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registro de Campo</p>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Diário de Obra (RDO)</h2>
           </div>
-          <input type="date" className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold" value={data} onChange={e => setData(e.target.value)} />
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-6 py-2.5">
+             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Data do Relatório</p>
+             <p className="text-sm font-black text-blue-600 leading-none">{data.split('-').reverse().join('/')}</p>
+          </div>
         </div>
 
         {/* Clima */}
         <div className="grid grid-cols-3 gap-6">
           {(['Manhã', 'Tarde', 'Noite'] as const).map(p => {
+            const key = p.toLowerCase() as 'manha' | 'tarde' | 'noite'
             const val = p === 'Manhã' ? climaManha : p === 'Tarde' ? climaTarde : climaNoite
             const setter = p === 'Manhã' ? setClimaManha : p === 'Tarde' ? setClimaTarde : setClimaNoite
             return (
-              <div key={p} className="space-y-2 text-center">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{p}</label>
+              <div key={p} className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] block text-center mb-2">{p}</label>
+                
+                {/* Weather Buttons */}
                 <div className="flex gap-1.5 justify-center">
                   {OPCOES_CLIMA.map(opt => (
                     <button key={opt.value} type="button" onClick={() => setter(opt.value)}
@@ -240,6 +258,28 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
                       {opt.icon}
                     </button>
                   ))}
+                </div>
+
+                {/* Period Times */}
+                <div className="flex items-center gap-2 pt-2">
+                   <div className="flex-1">
+                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Início</p>
+                      <input 
+                        type="time" 
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-700" 
+                        value={times[key].start}
+                        onChange={e => setTimes({...times, [key]: { ...times[key], start: e.target.value }})}
+                      />
+                   </div>
+                   <div className="flex-1">
+                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Fim</p>
+                      <input 
+                        type="time" 
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-700" 
+                        value={times[key].end}
+                        onChange={e => setTimes({...times, [key]: { ...times[key], end: e.target.value }})}
+                      />
+                   </div>
                 </div>
               </div>
             )
