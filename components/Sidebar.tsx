@@ -46,16 +46,17 @@ export default function Sidebar() {
     {
       title: 'Planejamento',
       items: [
+        { label: 'Estrutura & Locais', icon: LayoutDashboard, href: obraId ? `/obras/${obraId}?aba=planejamento` : '#', match: 'planejamento', needsObra: true },
         { label: 'Linha de Balanço', icon: Layers, href: obraId ? `/obras/${obraId}?aba=linha-balanco` : '#', match: 'linha-balanco', needsObra: true },
         { label: 'Cronograma Gantt', icon: GanttChartSquare, href: obraId ? `/obras/${obraId}?aba=cronograma` : '#', match: 'cronograma', needsObra: true },
-        { label: 'Tarefas', icon: ListTodo, href: obraId ? `/obras/${obraId}?aba=planejamento` : '#', match: 'planejamento', needsObra: true },
+        { label: 'Tarefas', icon: ListTodo, href: obraId ? `/obras/${obraId}?aba=campo` : '#', match: 'campo', needsObra: true },
         { label: 'Programações', icon: CalendarClock, href: obraId ? `/obras/${obraId}?aba=programacao` : '#', match: 'programacao', needsObra: true },
       ]
     },
     {
       title: 'Canteiro de Obra',
       items: [
-        { label: 'Diário de Obra', icon: BookOpen, href: obraId ? `/obras/${obraId}?aba=campo` : '#', match: 'campo', needsObra: true },
+        { label: 'Diário de Obra', icon: BookOpen, href: obraId ? `/obras/${obraId}?aba=gestao` : '#', match: 'gestao', needsObra: true },
         { label: 'Não Conformidade', icon: AlertTriangle, href: obraId ? `/obras/${obraId}?aba=cnc` : '#', match: 'cnc', needsObra: true },
       ]
     }
