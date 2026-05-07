@@ -5,7 +5,7 @@ import {
   CheckCircle2, Clock, Calendar,
   Search, Folder, Layers,
   Plus, X, AlertCircle, GripVertical, ShieldAlert,
-  Rocket
+  Rocket, ChevronRight
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
