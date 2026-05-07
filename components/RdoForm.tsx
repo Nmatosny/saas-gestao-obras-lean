@@ -75,6 +75,7 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
   const [atividadeExtra, setAtividadeExtra] = useState<Record<string, AtivExtra>>({})
   const [fotos, setFotos] = useState<{ url: string; caption: string }[]>([])
   const [salvando, setSalvando] = useState(false)
+  const [availableResources, setAvailableResources] = useState<any[]>([])
 
   // Inputs de adição (controlled, evita getElementById)
   const [ocTipo, setOcTipo] = useState('')
@@ -121,6 +122,14 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
       })
     }
     updateAvancos()
+
+    // Fetch available resources for manpower
+    fetch('/api/resources')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAvailableResources(data)
+      })
+      .catch(err => console.error('Error fetching resources:', err))
   }, [ativsEmAndamento])
 
   function updateExtra(atividadeId: string, patch: Partial<AtivExtra>) {
@@ -471,8 +480,24 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
             <Users className="w-4 h-4 text-blue-600" /> Mão de Obra Geral
           </h3>
           <div className="flex gap-2 mb-4">
-            <input placeholder="Função" className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold"
-              value={funcao} onChange={e => setFuncao(e.target.value)} />
+            <select 
+              className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none"
+              value={funcao} 
+              onChange={e => setFuncao(e.target.value)}
+            >
+              <option value="">Selecione a Função / Equipe...</option>
+              {availableResources.map(r => (
+                <option key={r.id} value={r.name}>{r.name} {r.companyName ? `(${r.companyName})` : ''}</option>
+              ))}
+              <option value="custom">+ Outra função...</option>
+            </select>
+            {funcao === 'custom' && (
+               <input 
+                 placeholder="Digite a nova função" 
+                 className="flex-1 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 text-sm font-bold animate-in slide-in-from-left-2"
+                 onChange={e => setFuncao(e.target.value)} 
+               />
+            )}
             <input type="number" placeholder="Qtd" className="w-16 bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold"
               value={funcaoQtd} onChange={e => setFuncaoQtd(e.target.value)} />
             <button type="button" className="bg-slate-900 text-white p-2.5 rounded-xl" onClick={() => {
