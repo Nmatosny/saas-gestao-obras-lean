@@ -74,9 +74,9 @@ export default function Sidebar() {
            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
               <HardHat className="text-white w-6 h-6" />
            </div>
-           <div className={`transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 w-0 hidden'}`}>
-              <h2 className="text-white font-black tracking-tighter text-lg leading-none">ANTIGRAVITY</h2>
-              <p className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] mt-1">SaaS Engineering</p>
+           <div className={`transition-all duration-300 flex flex-col overflow-hidden ${isHovered ? 'max-w-[200px] opacity-100' : 'max-w-0 opacity-0'}`}>
+              <h2 className="text-white font-black tracking-tighter text-lg leading-none whitespace-nowrap">ANTIGRAVITY</h2>
+              <p className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] mt-1 whitespace-nowrap">SaaS Engineering</p>
            </div>
         </div>
 
@@ -85,9 +85,9 @@ export default function Sidebar() {
              <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
                 <Briefcase className="w-4 h-4 text-blue-400" />
              </div>
-              <div className={`flex-1 min-w-0 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
-                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Projeto Ativo</p>
-                 <p className="text-xs font-bold text-white truncate">{mounted ? (session?.user?.workspaceId === 'demo' ? '[DEMO] Residencial Horizonte' : 'Obra em Andamento') : 'Obra em Andamento'}</p>
+              <div className={`flex-1 transition-all duration-300 overflow-hidden ${isHovered ? 'max-w-[200px] opacity-100 ml-3' : 'max-w-0 opacity-0'}`}>
+                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Projeto Ativo</p>
+                 <p className="text-xs font-bold text-white truncate whitespace-nowrap">{mounted ? (session?.user?.workspaceId === 'demo' ? '[DEMO] Residencial Horizonte' : 'Obra em Andamento') : 'Obra em Andamento'}</p>
               </div>
               {isHovered && <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />}
           </div>
@@ -96,9 +96,9 @@ export default function Sidebar() {
              <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center border border-blue-500/30">
                 <Building2 className="w-4 h-4 text-blue-400" />
              </div>
-              <div className={`flex-1 min-w-0 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
-                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Selecione uma Obra</p>
-                 <p className="text-[10px] font-bold text-slate-400">Ir para o Portfólio</p>
+              <div className={`flex-1 transition-all duration-300 overflow-hidden ${isHovered ? 'max-w-[200px] opacity-100 ml-3' : 'max-w-0 opacity-0'}`}>
+                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest whitespace-nowrap">Selecione uma Obra</p>
+                 <p className="text-[10px] font-bold text-slate-400 whitespace-nowrap">Ir para o Portfólio</p>
               </div>
               {isHovered && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
           </Link>
@@ -138,10 +138,12 @@ export default function Sidebar() {
                       }
                     `}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : isLocked ? 'text-slate-700' : 'text-slate-500 group-hover:text-blue-400'}`} />
-                    <span className={`flex-1 transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 w-0 hidden'}`}>{item.label}</span>
-                    {isHovered && isLocked && <Lock className="w-3 h-3 text-slate-700" />}
-                    {isActive && <div className={`w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] ${isHovered ? '' : 'absolute right-2'}`} />}
+                    <Icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : isLocked ? 'text-slate-700' : 'text-slate-500 group-hover:text-blue-400'}`} />
+                    <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${isHovered ? 'max-w-[200px] opacity-100 ml-3' : 'max-w-0 opacity-0'}`}>
+                      {item.label}
+                    </span>
+                    {isHovered && isLocked && <Lock className="w-3 h-3 text-slate-700 ml-auto" />}
+                    {isActive && <div className={`w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] ${isHovered ? 'ml-auto' : 'absolute right-2'}`} />}
                   </Link>
                 )
               })}
@@ -156,9 +158,9 @@ export default function Sidebar() {
            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-500/20">
               <span className="text-sm font-black text-blue-400">{mounted ? (session?.user?.name?.[0] || 'N') : 'N'}</span>
            </div>
-            <div className={`flex-1 min-w-0 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
-               <p className="text-xs font-black text-white truncate">{mounted ? (session?.user?.name || 'Engenheiro') : 'Engenheiro'}</p>
-               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsável Técnico</p>
+            <div className={`transition-all duration-300 overflow-hidden ${isHovered ? 'max-w-[200px] opacity-100 ml-3' : 'max-w-0 opacity-0'}`}>
+               <p className="text-xs font-black text-white truncate whitespace-nowrap">{mounted ? (session?.user?.name || 'Engenheiro') : 'Engenheiro'}</p>
+               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Responsável Técnico</p>
             </div>
             {isHovered && (
               <button className="p-2 text-slate-500 hover:text-white transition-colors">
