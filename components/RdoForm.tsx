@@ -243,7 +243,7 @@ export default function RdoForm({ obraId, dataInicial, ativsEmAndamento, onSalvo
         {/* Clima */}
         <div className="grid grid-cols-3 gap-6">
           {(['Manhã', 'Tarde', 'Noite'] as const).map(p => {
-            const key = p.toLowerCase() as 'manha' | 'tarde' | 'noite'
+            const key = p.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") as 'manha' | 'tarde' | 'noite'
             const val = p === 'Manhã' ? climaManha : p === 'Tarde' ? climaTarde : climaNoite
             const setter = p === 'Manhã' ? setClimaManha : p === 'Tarde' ? setClimaTarde : setClimaNoite
             return (
