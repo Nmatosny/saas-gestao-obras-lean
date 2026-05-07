@@ -26,7 +26,11 @@ export default function CurvaSChart({ obraId }: { obraId: string }) {
     fetch(`/api/obras/${obraId}/stats/curva-s`)
       .then(res => res.json())
       .then(d => {
-        setData(d)
+        if (d && Array.isArray(d.pontos)) {
+          setData(d.pontos)
+        } else if (Array.isArray(d)) {
+          setData(d)
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
