@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { LayoutGrid, Eye, EyeOff, TrendingUp, DollarSign, Target, Activity, ChevronRight, Maximize2 } from 'lucide-react'
+import { LayoutGrid, Eye, EyeOff, TrendingUp, DollarSign, Target, Activity, ChevronRight, Maximize2, X } from 'lucide-react'
 
 type Atividade = {
   id: string
@@ -102,17 +102,20 @@ export default function LinhaBalanco({ atividades }: Props) {
 
   // Generate grid marks
   const gridMarks = useMemo(() => {
-    const marks: { x: number, label: string, isMonth: boolean }[] = []
+    const marks: { x: number, label: string, isMonth: boolean, isWeek: boolean }[] = []
     const cursor = new Date(timeRange.start)
     cursor.setHours(0,0,0,0)
     
     for (let i = 0; i <= timeRange.totalDays; i++) {
       const x = LABEL_W + i * DAY_W * zoom
-      if (cursor.getDay() === 1) { // Monday
-        marks.push({ x, label: cursor.toLocaleDateString('pt-BR', { day: 'numeric', month: 'numeric' }), isMonth: false })
+      const isMonday = cursor.getDay() === 1
+      const isFirstOfMonth = cursor.getDate() === 1
+      
+      if (isMonday) {
+        marks.push({ x, label: cursor.toLocaleDateString('pt-BR', { day: 'numeric', month: 'numeric' }), isMonth: false, isWeek: true })
       }
-      if (cursor.getDate() === 1) { // 1st of month
-        marks.push({ x, label: cursor.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase(), isMonth: true })
+      if (isFirstOfMonth) {
+        marks.push({ x, label: cursor.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase(), isMonth: true, isWeek: false })
       }
       cursor.setDate(cursor.getDate() + 1)
     }
@@ -217,12 +220,19 @@ export default function LinhaBalanco({ atividades }: Props) {
             {/* Vertical Time Grid */}
             {gridMarks.map((m, i) => (
               <g key={i}>
-                <line x1={m.x} y1={0} x2={m.x} y2={PADDING_TOP + locations.length * ROW_H} stroke={m.isMonth ? '#e2e8f0' : '#f1f5f9'} strokeWidth={m.isMonth ? 2 : 1} />
+                <line 
+                  x1={m.x} y1={0} x2={m.x} y2={PADDING_TOP + locations.length * ROW_H} 
+                  stroke={m.isMonth ? '#cbd5e1' : m.isWeek ? '#e2e8f0' : '#f8fafc'} 
+                  strokeWidth={m.isMonth ? 2 : 1} 
+                />
                 {m.isMonth && (
-                  <text x={m.x + 8} y={30} fontSize="10" fontWeight="900" fill="#1e293b" className="tracking-[0.2em]">{m.label}</text>
+                  <g>
+                    <rect x={m.x} y={0} width={40} height={PADDING_TOP} fill="transparent" />
+                    <text x={m.x + 8} y={25} fontSize="10" fontWeight="900" fill="#1e293b" className="tracking-[0.2em]">{m.label}</text>
+                  </g>
                 )}
-                {!m.isMonth && zoom > 0.7 && (
-                  <text x={m.x + 4} y={PADDING_TOP - 10} fontSize="8" fontWeight="700" fill="#94a3b8">{m.label}</text>
+                {m.isWeek && zoom > 0.6 && (
+                  <text x={m.x + 4} y={PADDING_TOP - 10} fontSize="8" fontWeight="800" fill="#64748b">{m.label}</text>
                 )}
               </g>
             ))}
@@ -262,37 +272,45 @@ export default function LinhaBalanco({ atividades }: Props) {
                   {atvs.map(atv => {
                     const x = dateToX(atv.startDate)
                     const w = Math.max(10, dateToX(atv.endDate) - x)
-                    const y = locToY(atv.locationId) + 6
-                    const h = ROW_H - 12
+                    const y = locToY(atv.locationId) + 8
+                    const h = ROW_H - 16
                     
                     return (
-                      <g key={atv.id} className="group/bar">
-                        {/* Shadow/Glow */}
-                        <rect x={x} y={y} width={w} height={h} rx="4" fill={service.color} opacity="0.1" />
+                      <g key={atv.id} className="group/bar" onClick={() => setTooltip({ x, y, ativ: atv })}>
+                        {/* Shadow/Glow effect */}
+                        <rect x={x} y={y + 2} width={w} height={h} rx="6" fill={service.color} opacity="0.2" className="blur-[2px]" />
                         
-                        {/* Main Bar */}
+                        {/* Background Bar */}
                         <rect 
-                          x={x} y={y} width={w} height={h} rx="4" 
+                          x={x} y={y} width={w} height={h} rx="6" 
                           fill={service.color} 
-                          className="cursor-pointer transition-all hover:brightness-110"
+                          className="cursor-pointer transition-all hover:brightness-110 shadow-lg"
                         />
+
+                        {/* Glossy Overlay */}
+                        <rect x={x} y={y} width={w} height={h/2} rx="6" fill="white" opacity="0.1" className="pointer-events-none" />
 
                         {/* Progress Indicator (Inner Bar) */}
                         {atv.progress > 0 && (
                           <rect 
-                            x={x} y={y + h - 3} width={w * (atv.progress / 100)} height={3} rx="1.5" 
-                            fill="rgba(255,255,255,0.5)"
+                            x={x} y={y} width={w * (atv.progress / 100)} height={h} rx="6" 
+                            fill="rgba(255,255,255,0.3)"
+                            className="pointer-events-none"
                           />
                         )}
 
+                        {/* Border for clarity */}
+                        <rect x={x} y={y} width={w} height={h} rx="6" fill="transparent" stroke="white" strokeWidth="1" opacity="0.2" />
+
                         {/* Label on Bar */}
-                        {w > 60 && (
+                        {w > 40 && (
                           <text 
-                            x={x + 8} y={y + h/2 + 3} 
+                            x={x + w/2} y={y + h/2 + 3} 
                             fontSize="8" fontWeight="900" fill="white" 
+                            textAnchor="middle"
                             className="pointer-events-none uppercase tracking-tighter"
                           >
-                            {service.name.substring(0, Math.floor(w/6))}
+                            {w > 80 ? atv.name.substring(0, 20) : atv.name.substring(0, 5)}
                           </text>
                         )}
                       </g>
@@ -312,18 +330,61 @@ export default function LinhaBalanco({ atividades }: Props) {
             )}
 
             {/* Y Axis Label (Sidebar cover) */}
-            <rect x={0} y={0} width={LABEL_W} height="100%" fill="white" />
+            <rect x={0} y={0} width={LABEL_W} height="100%" fill="white" fillOpacity="0.95" className="backdrop-blur-sm" />
             <line x1={LABEL_W} y1={0} x2={LABEL_W} y2="100%" stroke="#e2e8f0" strokeWidth="2" />
+            
+            {/* Header background for dates */}
+            <rect x={0} y={0} width={LABEL_W + chartWidth} height={PADDING_TOP} fill="white" />
+            <line x1={0} y1={PADDING_TOP} x2={LABEL_W + chartWidth} y2={PADDING_TOP} stroke="#e2e8f0" strokeWidth="2" />
+
             {locations.map((loc) => {
               const y = locToY(loc.id)
               return (
-                <text key={loc.id} x={LABEL_W - 20} y={y + ROW_H/2 + 4} fontSize="10" fontWeight="900" fill="#1e293b" textAnchor="end" className="uppercase tracking-tighter">
-                  {loc.name}
-                </text>
+                <g key={loc.id}>
+                  <rect x={0} y={y} width={LABEL_W} height={ROW_H} fill="white" />
+                  <text x={LABEL_W - 20} y={y + ROW_H/2 + 4} fontSize="11" fontWeight="900" fill="#1e293b" textAnchor="end" className="uppercase tracking-tighter">
+                    {loc.name}
+                  </text>
+                  <line x1={0} y1={y + ROW_H} x2={LABEL_W} y2={y + ROW_H} stroke="#f1f5f9" strokeWidth="1" />
+                </g>
               )
             })}
 
           </svg>
+
+          {/* Tooltip Overlay */}
+          {tooltip && (
+            <div 
+              className="absolute bg-[#0F172A] text-white p-4 rounded-2xl shadow-2xl z-[110] border border-slate-700 min-w-[200px] animate-in fade-in zoom-in duration-200"
+              style={{ left: tooltip.x + 20, top: tooltip.y - 40 }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{tooltip.ativ.service?.name}</span>
+                 <button onClick={() => setTooltip(null)} className="text-slate-500 hover:text-white transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                 </button>
+              </div>
+              <h4 className="text-sm font-black mb-4 leading-tight">{tooltip.ativ.name}</h4>
+              <div className="space-y-3">
+                 <div className="flex justify-between text-[10px] border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 font-bold uppercase">Previsão:</span>
+                    <span className="font-black">{new Date(tooltip.ativ.startDate).toLocaleDateString()} - {new Date(tooltip.ativ.endDate).toLocaleDateString()}</span>
+                 </div>
+                 <div className="flex justify-between text-[10px] border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 font-bold uppercase">Local:</span>
+                    <span className="font-black">{tooltip.ativ.location?.name}</span>
+                 </div>
+                 <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-400 font-bold uppercase">Realizado:</span>
+                    <span className="text-emerald-400 font-black">{Math.round(tooltip.ativ.progress)}%</span>
+                 </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-800 flex gap-2">
+                 <button className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors">Detalhes</button>
+                 <button className="flex-1 bg-slate-800 text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">Impacto</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
